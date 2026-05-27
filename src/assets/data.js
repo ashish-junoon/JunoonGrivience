@@ -187,6 +187,8 @@ export const complaintsData = [
 export const products = [
   { label: "Paisa Udhaar", value: "PU" },
   { label: "Early Wages", value: "EW" },
+  { label: "Refyne", value: "RF" },
+  { label: "Insta Paisa", value: "IP" },
   // { label: "Others", value: "Others" },
 ];
 
@@ -195,6 +197,7 @@ export const channels = [
   { label: "Phone", value: "phone" },
   { label: "Email", value: "email" },
   { label: "Branch", value: "branch" },
+  { label: "Post", value: "post" },
 ];
 
 export const complaintRemarks = [

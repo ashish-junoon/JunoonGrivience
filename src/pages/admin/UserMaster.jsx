@@ -64,6 +64,10 @@ const UserMaster = () => {
       selector: (row) => row.email,
     },
     {
+      name: "Product",
+      selector: (row) => row.product || "N/A",
+    },
+    {
       name: "Level 1",
       selector: (row) => row.level,
     },
@@ -118,7 +122,7 @@ const UserMaster = () => {
         >
           {/* <p>Are you sure you want to perform this action?</p>  */}
           <div className="rounded-md">
-            <AddUser userData={userData} setIsOpen={setIsOpen} />
+            <AddUser userData={userData} setIsOpen={setIsOpen} fetchData={fetchData} />
           </div>
         </Modal>
 

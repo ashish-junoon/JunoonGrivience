@@ -9,12 +9,8 @@
     /* --color-primary: #8100D1; */
 }
 
-
-/* partners Sliding */
-
 body{
   font-family: "Poppins", sans-serif;
-  /* background: #3c9666; */
 }
 
 
@@ -53,6 +49,7 @@ body{
   
   .no-print{
     visibility: hidden;
+    display: none;
   }
   /* Show only the specific div and its children */
   .printable-content, .printable-content * {

@@ -5,17 +5,15 @@ import Button from "../../utils/Button.jsx";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
-import {
-  UserData,
-  complaintRemarks,
-  products,
-  tableData,
-} from "../../assets/data.js";
+import { UserData, products } from "../../assets/data.js";
 import Background from "../../utils/Background.jsx";
 import Icon from "../../utils/Icons.jsx";
-import { addDays } from "../../Functions/CommonFunction.jsx";
+import { addDays, formatDate } from "../../Functions/CommonFunction.jsx";
 import {
   createComplaint,
+  getComplaintStatus,
+  getRemarksByType,
+  getUserDetailsWithLoanId,
   sendEmailOtp,
   sendMobileOtp,
   verifyEmailOtp,
@@ -30,6 +28,7 @@ const ComplaintForm = ({ user }) => {
   const [isLoading, setisLoading] = useState(false);
   const [isInvalidLoan, setisInvalidLoan] = useState(false);
   const [isReadOnly, setisReadOnly] = useState(true);
+  const [RemarksData, setRemarksData] = useState([]);
 
   //OTP Verifying States
   const [mobileOtp, setMobileOtp] = useState("");
@@ -47,14 +46,16 @@ const ComplaintForm = ({ user }) => {
   //Sent OTP Mobile
   const handleSendMobileOtp = async () => {
     try {
-      setisLoading(true)
+      setisLoading(true);
       const req = {
         mobile: formikUser.values.mobile,
       };
 
       const response = await sendMobileOtp(req);
       if (response.status) {
-        toast.success(response.message + " " + response.otp || "Otp sent successfully");
+        toast.success(
+          response.message + " " + response.otp || "Otp sent successfully",
+        );
         setSentMobileOtp(true);
         setOtpMobileTimer(30);
       } else {
@@ -62,8 +63,8 @@ const ComplaintForm = ({ user }) => {
       }
     } catch (error) {
       console.error("Error in Sending Otp : ", error);
-    }finally{
-      setisLoading(false)
+    } finally {
+      setisLoading(false);
     }
   };
 
@@ -91,7 +92,7 @@ const ComplaintForm = ({ user }) => {
   //Sent OTP Email
   const handleSendEmailOtp = async () => {
     try {
-      setisLoading(true)
+      setisLoading(true);
       const req = {
         email: formikUser.values.email,
       };
@@ -106,8 +107,8 @@ const ComplaintForm = ({ user }) => {
       }
     } catch (error) {
       console.error("Error in Sending Otp : ", error);
-    }finally{
-      setisLoading(false)
+    } finally {
+      setisLoading(false);
     }
   };
 
@@ -186,13 +187,26 @@ const ComplaintForm = ({ user }) => {
           .min(5, "Please enter at least 5 characters")
           .required("Description is required"),
       otherwise: (schema) => schema.notRequired(),
+
+      file: Yup.mixed()
+        .nullable()
+        .test("fileSize", "File too large (Max 5MB)", (value) => {
+          if (!value) return true; // optional
+          return value.size <= 5 * 1024 * 1024;
+        })
+        .test("fileType", "Unsupported file format", (value) => {
+          if (!value) return true;
+          return ["image/jpeg", "image/png", "application/pdf"].includes(
+            value.type,
+          );
+        }),
     }),
   });
 
   const formikUser = useFormik({
     initialValues: {
       hasLoan: "YES",
-      productName: "",
+      a: "",
       loanId: "",
       mobile: "",
       email: "",
@@ -237,11 +251,15 @@ const ComplaintForm = ({ user }) => {
           setSentMobileOtp(false);
           setEmailOtp("");
           setMobileOtp("");
+          handleLoanToggle("YES");
+          handleisAppliedToggle("YES");
+          setstatusData(response.data);
         } else {
           toast.info(response.message || "Complaint not registered");
         }
       } catch (error) {
         console.log("Error in complaint register");
+        toast.error(error.response?.data?.message || "Something went wrong!");
       }
     },
   });
@@ -250,47 +268,52 @@ const ComplaintForm = ({ user }) => {
 
   const formikRefference = useFormik({
     initialValues: {
-      refference: "",
+      complaintRefNo: "",
     },
 
-    onSubmit: (values) => {
-      // console.log(values.refference);
-      const grivienceStatus = tableData.find(
-        (item) => item.id == values.refference,
-      );
-      if (grivienceStatus) {
-        setstatusData(grivienceStatus);
-      } else {
-        toast.error("Status Not Found!");
-      }
+    onSubmit: async (values) => {
+      try {
+        const response = await getComplaintStatus(values);
+        if (response.status) {
+          setstatusData(response.data);
+        } else {
+          toast.info(response.message || "Ref number not found!");
+        }
+      } catch (error) {}
     },
   });
 
+  
   // ✅ SEARCH BY LOAN ID
-  const handleSearch = () => {
-    const loan = UserData.find(
-      (item) => item.loanId === formikUser.values.loanId,
-    );
+  const handleSearch = async () => {
 
-    if (loan) {
-      // const [customerName, ...rest] = loan.name.split(" ");
-      // const lastName = rest.join(" ");
-
-      formikUser.setValues({
+    const req = {
+      loanId: formikUser.values.loanId
+    }
+    setisLoading(true)
+    try {
+      const response = await getUserDetailsWithLoanId(req)
+      if(response.status){
+           formikUser.setValues({
         ...formikUser.values,
-        productName: loan.productName,
-        email: loan.email,
-        mobile: loan.mobile,
-        customerName: loan.customerName,
-        // productName: loan.product,
+        productName: response?.data?.productName,
+        email: response?.data?.email,
+        mobile: response?.data?.mobile,
+        customerName: response?.data?.customerName,
       });
 
       toast.success("Loan verified");
       setisInvalidLoan(false);
-    } else {
-      toast.error("Loan not found");
-      setisInvalidLoan(true);
-      formikUser.resetForm();
+      }else{
+        toast.info("LoanId not found!");
+        setisInvalidLoan(true);
+        formikUser.resetForm();
+      }
+    } catch (error) {
+      console.log("Error in fetchRemarksData: ", error);
+      toast.error(error.response?.data?.message || "Something went wrong!");
+    }finally{
+      setisLoading(false)
     }
   };
 
@@ -313,18 +336,16 @@ const ComplaintForm = ({ user }) => {
       return;
     }
 
-    const selectedReason = complaintRemarks.find(
-      (item) => item.value === formikUser.values.complaintCategory,
+    const selectedReason = RemarksData?.find(
+      (item) => item?.value === formikUser?.values?.complaintCategory,
     );
 
-    formikUser.setFieldValue(
-      "description",
-      formikUser.values.complaintCategory || "",
-    );
-    formikUser.setFieldValue(
-      "response_time_in_days",
-      selectedReason?.response_time_in_days || "",
-    );
+    formikUser.setFieldValue("description", selectedReason?.description || "");
+
+    // formikUser.setFieldValue(
+    //   "response_time_in_days",
+    //   selectedReason?.response_time_in_days || "",
+    // );
   }, [formikUser.values.complaintCategory]);
 
   const ErrorMsg = ({ error, touched }) => {
@@ -387,7 +408,29 @@ const ComplaintForm = ({ user }) => {
     }
   };
 
+  const fetchRemarksData = async (req) => {
+    try {
+      const response = await getRemarksByType(req);
+      if (response.status) {
+        setRemarksData(response.data);
+      } else {
+        setRemarksData([]);
+      }
+    } catch (error) {
+      console.log("Error in fetchRemarksData: ", error);
+      toast.error(error.response?.data?.message || "Something went wrong!");
+    }
+  };
+  useEffect(() => {
+    const req = {
+      type: "COMPLAINT",
+    };
+
+    fetchRemarksData(req);
+  }, []);
+
   // console.log(formikUser.errors);
+  // console.log(formikUser.values);
   // console.log(handleGetLocation());
 
   return (
@@ -491,7 +534,12 @@ const ComplaintForm = ({ user }) => {
                         name="loanId"
                         value={formikUser.values.loanId}
                         // onChange={formikUser.handleChange}
-                        onChange={(e)=> formikUser.setFieldValue("loanId", e.target.value?.toUpperCase())}
+                        onChange={(e) =>
+                          formikUser.setFieldValue(
+                            "loanId",
+                            e.target.value?.toUpperCase(),
+                          )
+                        }
                         onBlur={formikUser.handleBlur}
                         // disabled={!isReadOnly}
                       />
@@ -625,9 +673,9 @@ const ComplaintForm = ({ user }) => {
                               : "Send OTP"
                           }
                           onClick={handleSendMobileOtp}
-                          disabled={(otpMobileTimer > 0) || isLoading}
+                          disabled={otpMobileTimer > 0 || isLoading}
                           style={`${
-                            (otpMobileTimer > 0 ) || isLoading
+                            otpMobileTimer > 0 || isLoading
                               ? "bg-gray-400 cursor-not-allowed"
                               : "bg-black hover:bg-black/80"
                           } text-white px-3 py-2 text-nowrap`}
@@ -661,9 +709,9 @@ const ComplaintForm = ({ user }) => {
                               : "Send OTP"
                           }
                           onClick={handleSendEmailOtp}
-                          disabled={(otpEmailTimer > 0 ) || isLoading}
+                          disabled={otpEmailTimer > 0 || isLoading}
                           style={`${
-                            (otpEmailTimer > 0 ) || isLoading
+                            otpEmailTimer > 0 || isLoading
                               ? "bg-gray-400 cursor-not-allowed"
                               : "bg-black hover:bg-black/80"
                           } text-white px-3 py-2 text-nowrap`}
@@ -751,59 +799,6 @@ const ComplaintForm = ({ user }) => {
                   />
                 </div>
 
-                {/* <div>
-                  <TextInput
-                    label="Mobile"
-                    name="mobile"
-                    value={formikUser.values.mobile}
-                    onChange={formikUser.handleChange}
-                    onBlur={formikUser.handleBlur}
-                    maxLength={10}
-                  />
-                  <ErrorMsg
-                    error={formikUser.errors.mobile}
-                    touched={formikUser.touched.mobile}
-                  />
-                </div>
-
-                <div>
-                  <TextInput
-                    label="Email"
-                    name="email"
-                    value={formikUser.values.email}
-                    onChange={formikUser.handleChange}
-                    onBlur={formikUser.handleBlur}
-                  />
-                  <ErrorMsg
-                    error={formikUser.errors.email}
-                    touched={formikUser.touched.email}
-                  />
-                </div> */}
-
-                {/* <div className="flex gap-2 items-end">
-                  <div className="w-full">
-                    <TextInput
-                      label="Mobile"
-                      name="mobile"
-                      maxLength={10}
-                      value={formikUser.values.mobile}
-                      onChange={formikUser.handleChange}
-                      // readOnly={isMobileVerified}
-                      style={isMobileVerified && "!bg-gray-100"}
-                    />
-                  </div>
-
-                  {!isMobileVerified &&
-                    formikUser.values.mobile.length == 10 && (
-                      <Button
-                        type="button"
-                        btnName="Send OTP"
-                        onClick={handleSendMobileOtp}
-                        style="bg-black text-white px-3 py-2 text-nowrap"
-                      />
-                    )}
-                </div> */}
-
                 <div className="flex gap-2 items-end">
                   <div className="w-full">
                     <TextInput
@@ -830,39 +825,15 @@ const ComplaintForm = ({ user }) => {
                             : "Send OTP"
                         }
                         onClick={handleSendMobileOtp}
-                        disabled={(otpMobileTimer > 0 ) || isLoading}
+                        disabled={otpMobileTimer > 0 || isLoading}
                         style={`${
-                          (otpMobileTimer > 0 ) || isLoading
+                          otpMobileTimer > 0 || isLoading
                             ? "bg-gray-400 cursor-not-allowed"
                             : "bg-black hover:bg-black/80"
                         } text-white px-3 py-2 text-nowrap`}
                       />
                     )}
                 </div>
-
-                {/* <div className="flex gap-2 items-end">
-                  <div className="w-full">
-                    <TextInput
-                      label="Email"
-                      name="email"
-                      value={formikUser.values.email}
-                      onChange={formikUser.handleChange}
-                      // readOnly={isEmailVerified}
-                      style={isEmailVerified && "!bg-gray-100"}
-                    />
-                  </div>
-
-                  {!isEmailVerified &&
-                    formikUser.values.email &&
-                    !formikUser.errors.email && (
-                      <Button
-                        type="button"
-                        btnName="Send OTP"
-                        onClick={handleSendEmailOtp}
-                        style="bg-black text-white px-3 text-nowrap"
-                      />
-                    )}
-                </div> */}
 
                 <div className="flex gap-2 items-end">
                   <div className="w-full">
@@ -884,15 +855,15 @@ const ComplaintForm = ({ user }) => {
                         type="button"
                         btnName={
                           sentEmailOtp
-                            ? otpEmailTimer > 0
+                            ? otpEmailTimer > 0 || isLoading
                               ? `Resend in ${otpEmailTimer}s`
                               : "Resend OTP"
                             : "Send OTP"
                         }
                         onClick={handleSendEmailOtp}
-                        disabled={(otpEmailTimer > 0 ) || isLoading}
+                        disabled={otpEmailTimer > 0 || isLoading}
                         style={`${
-                          otpEmailTimer > 0
+                          otpEmailTimer > 0 || isLoading
                             ? "bg-gray-400 cursor-not-allowed"
                             : "bg-black hover:bg-black/80"
                         } text-white px-3 py-2 text-nowrap`}
@@ -982,7 +953,7 @@ const ComplaintForm = ({ user }) => {
                   value={formikUser.values.complaintCategory}
                   onChange={formikUser.handleChange}
                   onBlur={formikUser.handleBlur}
-                  options={complaintRemarks}
+                  options={RemarksData}
                 />
                 <ErrorMsg
                   error={formikUser.errors.complaintCategory}
@@ -1089,41 +1060,140 @@ const ComplaintForm = ({ user }) => {
         ) : (
           <div>
             {statusData ? (
-              <div className="bg-white p-6 rounded-lg shadow mb-2 printable-content">
-                <p className="text-lg font-semibold text-center text-gray-800 underline">
-                  Complaint Acknowledgement
-                </p>
-                <div className="grid grid-cols-2 gap-2 text-md my-5">
-                  <p>Complaint reference number: {"xxxxxxxxxxxx"}</p>
-                  <p>Date of receipt: {"xxxxxxxxxxxx"}</p>
-                  <p>Broad issue recorded: {"xxxxxxxxxxxx"}</p>
-                  <p>Expected timeline for response: {"xxxxxxxxxxxx"}</p>
-                  {/* <p>
-                    Escalation route in case of dissatisfaction:{" "}
-                    {"xxxxxxxxxxxx"}
-                  </p> */}
-                  <p>Status: {"xxxxxxxxxxxx"}</p>
+              <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 printable-content">
+                {/* 🔷 Header */}
+                <div className="text-center border-b border-gray-300 pb-3 mb-4">
+                  <h2 className="text-xl font-semibold text-gray-800 tracking-wide">
+                    Complaint Acknowledgement
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Thank you for reaching out. Your complaint has been
+                    registered successfully.
+                  </p>
                 </div>
 
-                <div className="flex justify-center gap-2 no-print">
-                  <div className="">
-                    <Button
-                      onClick={() => {
-                        (setstatusData(null), formikRefference.resetForm());
-                      }}
-                      btnName="Reset"
-                      style="bg-primary hover:bg-primary/80 text-white m-auto cursor-pointer"
-                    />
+                {/* 📊 Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6 text-sm">
+                  <div>
+                    <p className="text-gray-400 text-xs">Customer Name</p>
+                    <p className="font-medium text-gray-800">
+                      {statusData?.customerName || "N/A"}
+                    </p>
                   </div>
 
                   <div>
-                    <Button
-                      btnIcon="FaPrint"
-                      onClick={() => window.print()}
-                      btnName="Print"
-                      style="bg-primary hover:bg-primary/80 text-white m-auto cursor-pointer"
-                    />
+                    <p className="text-gray-400 text-xs">Complaint Ref No</p>
+                    <p className="font-medium text-gray-800">
+                      {statusData?.complaintRefNo || "N/A"}
+                    </p>
                   </div>
+
+                  <div>
+                    <p className="text-gray-400 text-xs">Complaint Date</p>
+                    <p className="font-medium text-gray-800">
+                      {formatDate(statusData?.createdAt)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-400 text-xs">Issue Category</p>
+                    <p className="font-medium text-gray-800">
+                      {statusData?.complaintCategory || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-400 text-xs">Current Status</p>
+                    <span
+                      className={`inline-block px-3 py-1 text-xs rounded-full mt-1
+        ${
+          statusData?.status === "Resolved"
+            ? "bg-green-100 text-green-700"
+            : statusData?.status === "Rejected"
+              ? "bg-red-100 text-red-700"
+              : "bg-blue-100 text-blue-700"
+        }`}
+                    >
+                      {statusData?.status || "Pending"}
+                    </span>
+                  </div>
+
+                  {statusData?.closerDate && (
+                    <>
+                      <div>
+                        <p className="text-gray-400 text-xs">Closed Reason</p>
+                        <p className="font-medium text-gray-800">
+                          {statusData?.closureReason}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-xs">Closed Date</p>
+                        <p className="font-medium text-gray-800">
+                          {statusData?.closerDate}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="space-y-2 grid grid-cols-2 gap-2 my-3">
+                  {statusData?.files?.map((doc, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between border border-gray-100 rounded-lg px-3 py-1 hover:bg-gray-50 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 flex items-center justify-center rounded bg-gray-100 text-gray-600 text-sm">
+                        {doc.mimeType !== "application/pdf" ? "🖼️" : "📄"}
+                      </div>
+                      
+                        {/* Info */}
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">
+                            {doc.name}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            Uploaded on {formatDate(doc.uploadedAt)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-3 text-sm">
+                        <a
+                          href={`${import.meta.env.VITE_SERVER_BASE_URL}${doc.url}`}
+                          target="_blank"
+                          className="text-primary hover:underline"
+                        >
+                          View
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 📝 Footer Note */}
+                <div className="mt-5 border-t border-gray-300 pt-3 text-xs text-gray-500 text-center">
+                  Please keep this reference number for future communication.
+                </div>
+
+                {/* ⚙️ Actions */}
+                <div className="flex justify-center gap-3 mt-5 no-print">
+                  <Button
+                    onClick={() => {
+                      setstatusData(null);
+                      formikRefference.resetForm();
+                    }}
+                    btnName="Reset"
+                    style="border border-gray-300 text-gray-700 hover:bg-gray-100 px-5 py-2 rounded-md cursor-pointer"
+                  />
+
+                  <Button
+                    btnIcon="FaPrint"
+                    onClick={() => window.print()}
+                    btnName="Print"
+                    style="bg-primary hover:bg-primary/80 text-white px-5 py-2 rounded-md cursor-pointer"
+                  />
                 </div>
               </div>
             ) : (
@@ -1133,8 +1203,8 @@ const ComplaintForm = ({ user }) => {
                     <div className="w-full">
                       <TextInput
                         label="Refference No."
-                        name="refference"
-                        value={formikRefference.values.refference}
+                        name="complaintRefNo"
+                        value={formikRefference.values.complaintRefNo}
                         onBlur={formikRefference.handleBlur}
                         onChange={formikRefference.handleChange}
                       />

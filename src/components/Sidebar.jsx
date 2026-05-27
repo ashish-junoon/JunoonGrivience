@@ -1,50 +1,87 @@
 import { useState } from "react";
 import { RiArrowDownSLine, RiCloseLine } from "react-icons/ri";
 import { NavLink, useLocation } from "react-router-dom";
-import {
-  RiDashboardLine,
-  RiUser3Line,
-  RiSettings3Line,
-} from "react-icons/ri";
-import { MdHistory } from "react-icons/md";
+import { RiDashboardLine, RiUser3Line, RiSettings3Line } from "react-icons/ri";
+import { IoBookmarksOutline, IoTicketOutline } from "react-icons/io5";
 
-const sidebarData = [
-  {
-    title: "Dashboard",
-    path: "/dashboard",
-    icon: RiDashboardLine,
-  },
-  {
-    title: "Tickets",
-    icon: RiUser3Line,
-    children: [
-      { title: "Manage Ticket", path: "/tickets/manage-tickets" },
-      { title: "Pending Ticket", path: "/tickets/pending-tickets" },
-      { title: "History", path: "/tickets/tickets-history" },
-    ],
-  },
-  // {
-  //   title: "History",
-  //   icon: MdHistory,
-  //   path: "/tickets/tickets-history",
-  // },
-  {
-    title: "User Master",
-    icon: RiUser3Line,
-    children: [
-      { title: "Manage User", path: "/User/manage-user" },
-    ],
-  },
-  // {
-  //   title: "Settings",
-  //   path: "/settings",
-  //   icon: RiSettings3Line,
-  // },
-];
+import { MdHistory } from "react-icons/md";
+import { useAuth } from "../context/AuthContext";
 
 const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   const [openMenus, setOpenMenus] = useState({});
   const location = useLocation();
+
+  const { isAdmin } = useAuth();
+
+  const sidebarData = !isAdmin
+    ? [
+        {
+          title: "Dashboard",
+          path: "/dashboard",
+          icon: RiDashboardLine,
+        },
+        {
+          title: "Tickets",
+          icon: RiUser3Line,
+          children: [
+            { title: "Manage Ticket", path: "/tickets/manage-tickets" },
+            { title: "History", path: "/tickets/tickets-history" },
+          ],
+        },
+      ]
+    : [
+        {
+          title: "Dashboard",
+          path: "/dashboard",
+          icon: RiDashboardLine,
+        },
+        {
+          title: "Tickets",
+          icon: RiUser3Line,
+          children: [
+            { title: "Manage Ticket", path: "/tickets/manage-tickets" },
+            { title: "InProcess Ticket", path: "/tickets/inprocess-tickets" },
+            { title: "History", path: "/tickets/tickets-history" },
+          ],
+        },
+        {
+          title: "User Master",
+          icon: RiUser3Line,
+          children: [{ title: "Manage User", path: "/User/manage-user" }],
+        },
+        {
+          title: "Query Master",
+          icon: IoBookmarksOutline,
+          children: [{ title: "Manage Query", path: "/query/manage-query" }],
+        },
+      ];
+
+  // const sidebarData = [
+  //   {
+  //     title: "Dashboard",
+  //     path: "/dashboard",
+  //     icon: RiDashboardLine,
+  //   },
+  //   {
+  //     title: "Tickets",
+  //     icon: IoTicketOutline,
+  //     children: [
+  //       { title: "Manage Ticket", path: "/tickets/manage-tickets" },
+  //       { title: "InProcess Ticket", path: "/tickets/inprocess-tickets" },
+  //       { title: "History", path: "/tickets/tickets-history" },
+  //     ],
+  //   },
+  //   {
+  //     title: "User Master",
+  //     icon: RiUser3Line,
+  //     children: [{ title: "Manage User", path: "/user/manage-user" }],
+  //   },
+  //   {
+  //     title: "Remarks Master",
+  //     icon: IoBookmarksOutline,
+  //     children: [{ title: "Manage Remark", path: "/remark/manage-remark" }],
+  //   }
+  // ];
 
   const toggleMenu = (index) => {
     setOpenMenus((prev) => ({
@@ -75,9 +112,9 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
       >
         {/* Header */}
         <div className="flex justify-between items-center px-5 py-4 border-b border-gray-800">
-          <h1 className="text-lg font-semibold text-white tracking-wide">
+          <h1 className="text-xl font-bold text-white tracking-wide">
             {/* Admin Panel */}
-            Grievance Portal
+            <span className="text-primary">Grievance</span> Portal
           </h1>
 
           <button
@@ -90,7 +127,6 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
 
         {/* Menu */}
         <div className="flex-1 overflow-y-auto py-0 space-y-1">
-
           {sidebarData.map((item, index) => {
             const Icon = item.icon;
 
@@ -161,8 +197,8 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-800 text-xs text-gray-500 text-center">
-          © 2026 Grievance System
+        <div className="p-4 border-t border-gray-800 text-xs text-gray-400 text-center font-semibold">
+          © 2026 Powered by LogicAI Tech.
         </div>
       </div>
     </>

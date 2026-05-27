@@ -1,58 +1,66 @@
-import { createContext, useContext, useEffect, useReducer, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useReducer,
+  useCallback,
+} from "react";
 import { toast } from "react-toastify";
 
 const AuthContext = createContext();
 
 const authReducer = (state, action) => {
-    switch (action.type) {
-        case "LOGIN":
-            const loginData = {
-                ...action.payload, 
-                isAuthenticated: true
-            };
-            localStorage.setItem("adminUser", JSON.stringify(loginData));
-            return {
-                ...state,
-                loginData
-            };
-        case "LOGOUT":
-            localStorage.removeItem("adminUser");
-            return {
-                ...state,
-                adminUser: null,
-                isAuthenticated: false,
-            };
-        default:
-            return state;
-    }
+  switch (action.type) {
+    case "LOGIN":
+      const userData = action.payload;
+
+      localStorage.setItem("adminUser", JSON.stringify(userData));
+
+      return {
+        ...state,
+        adminUser: userData,
+        isAuthenticated: true,
+      };
+
+    case "LOGOUT":
+      localStorage.removeItem("adminUser");
+
+      return {
+        ...state,
+        adminUser: null,
+        isAuthenticated: false,
+      };
+
+    default:
+      return state;
+  }
 };
 
 export const AuthProvider = ({ children }) => {
-    const storedData = JSON.parse(localStorage.getItem("adminUser"));
-    const isExpired = storedData && Date.now() > storedData.expiry;
+  const storedData = JSON.parse(localStorage.getItem("adminUser"));
 
-    const [state, dispatch] = useReducer(authReducer, {
-        adminUser: !isExpired ? storedData?.user : null,
-        isAuthenticated: !isExpired && !!storedData?.user,
-    });
+  const [state, dispatch] = useReducer(authReducer, {
+    adminUser: storedData || null,
+    isAuthenticated: !!storedData,
+    isAdmin : storedData?.role == "ADMIN"
+  });
 
-    const login = (loginResponse) => {
-        dispatch({ type: "LOGIN", payload: loginResponse });
-    };
+  const login = (loginResponse) => {
+    dispatch({ type: "LOGIN", payload: loginResponse });
+  };
 
-    const logout = useCallback((logout_type) => {
-        handleLogout(logout_type)
-        dispatch({ type: "LOGOUT" });
-    }, []);
+  const logout = useCallback((logout_type) => {
+    // handleLogout(logout_type);
+    dispatch({ type: "LOGOUT" });
+  }, []);
 
-
-    return (
-        <AuthContext.Provider value={{ ...state, login, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
+  return (
+    <AuthContext.Provider value={{ ...state, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
-    return useContext(AuthContext);
+  return useContext(AuthContext);
 };

@@ -5,17 +5,12 @@ import Button from "../../utils/Button.jsx";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
-import {
-  UserData,
-  channels,
-  complaintRemarks,
-  products,
-  tableData,
-} from "../../assets/data.js";
+import { UserData, channels, products, tableData } from "../../assets/data.js";
 import Background from "../../utils/Background.jsx";
 import Icon from "../../utils/Icons.jsx";
 import { addDays } from "../../Functions/CommonFunction.jsx";
-import { createComplaint } from "../../api/ApiFunction.jsx";
+import { createComplaint, getRemarksByType, getUserDetailsWithLoanId } from "../../api/ApiFunction.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
   // const [loanData, setLoanData] = useState([]);
@@ -25,6 +20,10 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
   const [isLoading, setisLoading] = useState(false);
   const [isInvalidLoan, setisInvalidLoan] = useState(false);
   const [isReadOnly, setisReadOnly] = useState(true);
+  const [RemarksData, setRemarksData] = useState([]);
+
+  const {adminUser} = useAuth()
+  
 
   const today = new Date();
 
@@ -57,8 +56,9 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
 
     complaintCategory: Yup.string().required("Please select a reason"),
     geolocation: Yup.string().required("Geolocation is Required!"),
-
-    description: Yup.string().when("reason", {
+    productName: Yup.string().required(),
+    channel: Yup.string().required(),
+    description: Yup.string().when("complaintCategory", {
       is: "OTHERS",
       then: (schema) =>
         schema
@@ -70,6 +70,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
 
   const formikUser = useFormik({
     initialValues: {
+      hasLoan: "YES",
       productName: "",
       loanId: "",
       mobile: "",
@@ -80,7 +81,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
       customerName: "",
       file: {},
       geolocation: "",
-      createdBy: "-----------",
+      // createdBy: "",
       channel: "",
     },
 
@@ -98,7 +99,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
       formData.append("complaintCategory", values.complaintCategory);
       formData.append("complaintDescription", values.description);
       formData.append("location", values.geolocation);
-      formData.append("createdBy", values.createdBy);
+      formData.append("createdBy", values.adminUser?.empId);
       // formData.append("file", values.file);
 
       if (values.file && values.file.name) {
@@ -112,6 +113,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
           fetchData();
           resetForm();
           setIsOpen(false);
+          handleLoanToggle("YES");
         } else {
           toast.info(response.message || "Complaint not registered");
         }
@@ -139,32 +141,6 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
     },
   });
 
-  // ✅ SEARCH BY LOAN ID
-  const handleSearch = () => {
-    const loan = UserData.find(
-      (item) => item.loanId === formikUser.values.loanId,
-    );
-
-    if (loan) {
-      // const [customerName, ...rest] = loan.name.split(" ");
-      // const lastName = rest.join(" ");
-
-      formikUser.setValues({
-        ...formikUser.values,
-        productName: loan.productName,
-        email: loan.email,
-        mobile: loan.mobile,
-        customerName: loan.customerName,
-      });
-
-      toast.success("Loan verified");
-      setisInvalidLoan(false);
-    } else {
-      toast.error("Loan not found");
-      setisInvalidLoan(true);
-      formikUser.resetForm();
-    }
-  };
 
   //Toggle Button
   const handleLoanToggle = (value) => {
@@ -185,18 +161,11 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
       return;
     }
 
-    const selectedReason = complaintRemarks.find(
-      (item) => item.value === formikUser.values.complaintCategory,
+    const selectedReason = RemarksData?.find(
+      (item) => item?.value === formikUser?.values?.complaintCategory,
     );
 
-    formikUser.setFieldValue(
-      "description",
-      formikUser.values.complaintCategory || "",
-    );
-    formikUser.setFieldValue(
-      "response_time_in_days",
-      selectedReason?.response_time_in_days || "",
-    );
+    formikUser.setFieldValue("description", selectedReason?.description || "");
   }, [formikUser.values.complaintCategory]);
 
   const ErrorMsg = ({ error, touched }) => {
@@ -259,9 +228,61 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
     }
   };
 
-  // console.log(formikUser.values);
-  // console.log(formikUser.errors);
-  // console.log(handleGetLocation());
+  const fetchRemarksData = async (req) => {
+    try {
+      const response = await getRemarksByType(req);
+      if (response.status) {
+        setRemarksData(response.data);
+      } else {
+        setRemarksData([]);
+      }
+    } catch (error) {
+      console.log("Error in fetchRemarksData: ", error);
+      toast.error(error.response?.data?.message || "Something went wrong!");
+    }
+  };
+
+  
+    // ✅ SEARCH BY LOAN ID
+    const handleSearch = async () => {
+  
+      const req = {
+        loanId: formikUser.values.loanId
+      }
+      setisLoading(true)
+      try {
+        const response = await getUserDetailsWithLoanId(req)
+        if(response.status){
+             formikUser.setValues({
+          ...formikUser.values,
+          productName: response?.data?.productName,
+          email: response?.data?.email,
+          mobile: response?.data?.mobile,
+          customerName: response?.data?.customerName,
+        });
+  
+        toast.success("Loan verified");
+        setisInvalidLoan(false);
+        }else{
+          toast.info("LoanId not found!");
+          setisInvalidLoan(true);
+          formikUser.resetForm();
+        }
+      } catch (error) {
+        console.log("Error in fetchRemarksData: ", error);
+        toast.error(error.response?.data?.message || "Something went wrong!");
+      }finally{
+        setisLoading(false)
+      }
+    };
+
+  useEffect(() => {
+    const req = {
+      type: "COMPLAINT",
+    };
+
+    fetchRemarksData(req);
+  }, []);
 
   return (
     <section className="min-h-screen">
@@ -323,7 +344,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
             {/* ✅ IF USER HAS LOAN */}
             {hasLoan === "YES" && (
               <div className="bg-white p-6 rounded-lg shadow mb-2">
-                <div className="flex gap-3 items-end mb-4">
+                {/* <div className="flex gap-3 items-end mb-4">
                   <div className="w-full">
                     <TextInput
                       label="Loan Account No."
@@ -352,6 +373,80 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
                       style="bg-black hover:bg-black/80 text-white px-4 py-2 cursor-pointer text-nowrap"
                     />
                   )}
+                </div> */}
+
+                <div className="mb-2">
+                  <div className="flex gap-3 items-start mb-4">
+                    {/* Input + Error */}
+                    <div className="w-full">
+                      <TextInput
+                        label="Loan Account No."
+                        name="loanId"
+                        value={formikUser.values.loanId}
+                        // onChange={formikUser.handleChange}
+                        onChange={(e) =>
+                          formikUser.setFieldValue(
+                            "loanId",
+                            e.target.value?.toUpperCase(),
+                          )
+                        }
+                        onBlur={formikUser.handleBlur}
+                        // disabled={!isReadOnly}
+                      />
+
+                      {/* Error */}
+                      {formikUser.touched.loanId &&
+                        formikUser.errors.loanId && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {formikUser.errors.loanId}
+                          </p>
+                        )}
+
+                      {/* API Error */}
+                      {/* {isInvalidLoan && (
+                        <p className="text-red-500 text-xs mt-1">
+                          Loan not found. Enter manually.
+                        </p>
+                      )} */}
+                    </div>
+
+                    {/* Button aligned independently */}
+                    {isReadOnly && (
+                      <div className="pt-6">
+                        <Button
+                          type="button"
+                          btnName="Verify"
+                          onClick={handleSearch}
+                          style="bg-primary hover:bg-primary/90 text-white px-4 py-2 cursor-pointer"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end mt-2">
+                    {isInvalidLoan && isReadOnly && (
+                      <Button
+                        type="button"
+                        btnName="Enter Details Manually"
+                        onClick={() => setisReadOnly(false)}
+                        style="bg-black hover:bg-black/80 text-white px-4 py-2 cursor-pointer"
+                      />
+                    )}
+
+                    {!isReadOnly && (
+                      <Button
+                        type="button"
+                        btnName="Search with Loan ID"
+                        onClick={() => {
+                          setisReadOnly(true);
+                          setisInvalidLoan(false);
+                          formikUser.resetForm();
+                        }}
+                        style="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 cursor-pointer"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -543,7 +638,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
                   value={formikUser.values.complaintCategory}
                   onChange={formikUser.handleChange}
                   onBlur={formikUser.handleBlur}
-                  options={complaintRemarks}
+                  options={RemarksData}
                 />
                 <ErrorMsg
                   error={formikUser.errors.complaintCategory}

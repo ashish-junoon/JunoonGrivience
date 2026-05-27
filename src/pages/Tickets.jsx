@@ -15,6 +15,7 @@ import SelectInput from "../components/fields/SelectInput";
 import Escalate from "../components/forms/Escalate";
 import Reject from "../components/forms/Reject";
 import { getComplaints } from "../api/ApiFunction";
+import { useAuth } from "../context/AuthContext";
 
 const Tickets = () => {
   const [open, setOpen] = useState(false);
@@ -23,12 +24,19 @@ const Tickets = () => {
   const [isReject, setisReject] = useState(false);
   const [ticket, setTicket] = useState(null);
   const [Tickets, setTickets] = useState([])
+  const [csvData, setcsvData] = useState([])
 
   const navigate = useNavigate();
+  const {adminUser} = useAuth()  
+  
+  const isAdmin = adminUser?.role == "ADMIN";
+  
 
   const fetchData = async () => {
     try {
-      const req={}
+      const req={
+        empId: adminUser?.empId
+      }
       const response = await getComplaints(req)
       if(response.status){
         setTickets(response.data)
@@ -96,12 +104,12 @@ const Tickets = () => {
     {
       name: "Created Date",
       sortable: true,
-      selector: (row) => row.createdAt,
+      selector: (row) => row.reOpenDate || row.createdAt,
     },
     {
       name: "Created By",
       sortable: true,
-      selector: (row) => row.createdBy,
+      selector: (row) => row.createdByName,
     },
     {
       name: "Status",
@@ -162,10 +170,35 @@ const Tickets = () => {
     },
   ];
 
+useEffect(() => {
+  if (!Tickets || Tickets.length === 0) return;
+
+  const ExportableData = Tickets.map((data) => ({
+    "Complaint Id": data?.complaintRefNo,
+    "Customer Name": data?.customerName,
+    "Loan Id": data?.loanId || "N/A",
+    "Mobile": data?.mobile,
+    "Email": data?.email,
+    "Product Name": data?.productName,
+    "Complaint Category": data?.complaintCategory,
+    "Complaint Description": data?.complaintDescription,
+    "Created By": data?.createdByName,
+    "Status": data?.status,
+    "Assigned To": data?.assignedToName || "N/A",
+    // "Closed By": data?.closedByName || "-",
+    "ReOpen By": data?.reOpenByName || "-",
+    "Created At": data?.createdAt,
+  }));
+
+  setcsvData(ExportableData);
+}, [Tickets]);
+
+  
+
   return (
     <>
       <section>
-        <div className="mb-2 flex justify-end gap-2">
+        {isAdmin && <div className="mb-2 flex justify-end gap-2">
           <Button
             btnIcon="LuImport"
             onClick={() => setOpen(true)}
@@ -177,7 +210,7 @@ const Tickets = () => {
             btnName="Add Ticket"
             style="bg-primary text-white cursor-pointer hover:bg-primary/90"
           />
-        </div>
+        </div>}
 
         <div className="mt-0">
           <Table
@@ -185,7 +218,9 @@ const Tickets = () => {
             data={Tickets}
             title="Manage Tickets"
             // handleFilter={handleFilterBtn}
+            filename="AssignedTickets"
             exportable={true}
+            csvData={csvData}
           />
         </div>
 
@@ -204,7 +239,7 @@ const Tickets = () => {
           onClose={() => setisAssignOpen(false)}
           title="Escalate Complaint"
         >
-          <Escalate setisAssignOpen={setisAssignOpen} ticket={ticket} />
+          <Escalate setisAssignOpen={setisAssignOpen} ticket={ticket} isAssignOpen={isAssignOpen} fetchData={fetchData} />
         </Modal>
 
         <Modal
@@ -212,13 +247,15 @@ const Tickets = () => {
           onClose={() => setisReject(false)}
           title="Reject Complaint"
         >
-          <Reject setisReject={setisReject} ticket={ticket} fetchData={fetchData}/>
+          <Reject setisReject={setisReject} ticket={ticket} fetchData={fetchData} isReject={isReject}/>
         </Modal>
 
         <FileUploadModal
           isOpen={open}
           onClose={() => setOpen(false)}
-          accepts=".csv"
+          // accepts=".csv"
+          accepts=".xls,.xlsx,.csv"
+          fetchData={fetchData}
           // onUpload={handleUpload}
         />
 

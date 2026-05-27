@@ -1,21 +1,28 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import TextInput from "../fields/TextInput";
 import UploadInput from "../fields/UploadInput";
 import Button from "../../utils/Button";
 import { ComplaintResolutionData } from "../../assets/data";
 import SelectInput from "../fields/SelectInput";
 import { useFormik } from "formik";
-import * as Yup from "yup"
-import { resolveComplaint } from "../../api/ApiFunction";
+import * as Yup from "yup";
+import { getRemarksByType, resolveComplaint } from "../../api/ApiFunction";
+import { toast } from "react-toastify";
+import { useAuth } from "../../context/AuthContext";
+import { href, useNavigate } from "react-router-dom";
 
-const Resolve = ({ setisResolved, ticket, fetchData }) => {
+const Resolve = ({ setisResolved, ticket, fetchData, isResolved }) => {
+  const [RemarksData, setRemarksData] = useState([]);
+
   // console.log(ticket);
-  
+  const { adminUser } = useAuth();
+  const navigate = useNavigate()
+
   const formik = useFormik({
     initialValues: {
       remarks: "",
       description: "",
-      file: {}
+      file: {},
     },
 
     validationSchema: Yup.object({
@@ -31,11 +38,10 @@ const Resolve = ({ setisResolved, ticket, fetchData }) => {
     }),
 
     onSubmit: async (values, { resetForm, setFieldValue }) => {
-
-      const formData = new FormData()
+      const formData = new FormData();
       formData.append("remarks", values.remarks);
       formData.append("description", values.description);
-      formData.append("empId", "EMP0001");
+      formData.append("empId", adminUser?.empId);
       formData.append("id", ticket?._id);
 
       if (values.file && values.file.name) {
@@ -45,37 +51,60 @@ const Resolve = ({ setisResolved, ticket, fetchData }) => {
       try {
         const response = await resolveComplaint(formData);
         if (response.status) {
-          setisReject(false);
           toast.success(response.message || "Complait Rejected");
           fetchData(ticket?.complaintRefNo);
           resetForm();
+          setisResolved(false);
+          if(location.pathname === "/tickets/ticket-detail"){
+            navigate(-1)
+          }
         } else {
           toast.info(response.message || "Error in rejecting complaint!");
         }
       } catch (error) {
-        console.log("Error in rejectComplaint", error);
+        console.log("Error in resolve Complaint", error);
+        toast.error(error.response?.data?.message || "Something went wrong!");
       }
     },
   });
 
-  console.log(formik.values.file);
-  
-
   useEffect(() => {
-      const selected = ComplaintResolutionData.find(
-        (item) => item.value === formik.values.remarks,
-      );
-  
-      if (!selected) return;
-  
-      if (selected.value === "OTHERS") {
-        formik.setFieldValue("description", "");
-      } else {
-        formik.setFieldValue("description", selected.description);
-      }
-    }, [formik.values.remarks]);
+    const selected = RemarksData.find(
+      (item) => item.value === formik.values.remarks,
+    );
 
-    console.log(formik.values.file);
+    if (!selected) return;
+
+    if (selected.value === "OTHERS") {
+      formik.setFieldValue("description", "");
+    } else {
+      formik.setFieldValue("description", selected.description);
+    }
+  }, [formik.values.remarks]);
+
+  const fetchRemarksData = async (req) => {
+    try {
+      const response = await getRemarksByType(req);
+      if (response.status) {
+        setRemarksData(response.data);
+      } else {
+        setRemarksData([]);
+      }
+    } catch (error) {
+      console.log("Error in fetchRemarksData: ", error);
+      toast.error(error.response?.data?.message || "Something went wrong!");
+    }
+  };
+  useEffect(() => {
+    if(!isResolved) return;
+
+    const req = {
+      type: "RESOLVE",
+    };
+
+    fetchRemarksData(req);
+  }, [ticket, isResolved]);
+  
 
   return (
     <form onSubmit={formik.handleSubmit}>
@@ -86,7 +115,7 @@ const Resolve = ({ setisResolved, ticket, fetchData }) => {
               label="Remarks"
               placeholder="Remarks"
               name="remarks"
-              options={ComplaintResolutionData}
+              options={RemarksData}
               value={formik.values.remarks}
               onBlur={formik.handleBlur}
               onChange={formik.handleChange}
@@ -95,12 +124,14 @@ const Resolve = ({ setisResolved, ticket, fetchData }) => {
 
           <div>
             <UploadInput
-              onChange={(e) => {formik.setFieldValue("file", e.target.files[0])}}
+              onChange={(e) => {
+                formik.setFieldValue("file", e.target.files[0]);
+              }}
               label="Document"
               name="file"
               value={formik.values.file}
               onBlur={formik.handleBlur}
-              />
+            />
           </div>
 
           <div className="w-full col-span-2">
@@ -111,7 +142,7 @@ const Resolve = ({ setisResolved, ticket, fetchData }) => {
               name="description"
               value={formik.values.description}
               onBlur={formik.handleBlur}
-              readOnly={formik.values.remarks !== "OTHERS"}
+              // readOnly={formik.values.remarks !== "OTHERS"}
               onChange={(e) =>
                 formik.setFieldValue("description", e.target.value)
               }
@@ -124,12 +155,14 @@ const Resolve = ({ setisResolved, ticket, fetchData }) => {
         <Button
           onClick={() => setisResolved(false)}
           btnName="Cancel"
+          disabled={formik.isSubmitting}
           style="cursor-pointer border border-gray-300"
         />
         <Button
           type="submit"
           btnName="Yes"
-          style="cursor-pointer bg-primary hover:bg-primary/80 text-white"
+          disabled={formik.isSubmitting}
+          style={`${!formik.isSubmitting ? "cursor-pointer bg-primary" : "cursor-not-allowed bg-gray-500"} hover:bg-primary/80 text-white`}
         />
       </div>
     </form>

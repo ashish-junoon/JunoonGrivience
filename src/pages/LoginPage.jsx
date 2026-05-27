@@ -32,7 +32,8 @@ const LoginPage = () => {
 
         if(response.status){
           login(response.data);
-          navigate("/")
+          // navigate("/dashboard")
+          window.location.href="/dashboard"
         }else{
           toast.info(response.message || "Error in Login")
         }

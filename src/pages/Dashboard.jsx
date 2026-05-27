@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import DashboardStats from "../utils/DashboardStats";
 import DashboardChart from "../utils/DashboardChart";
+import { getDashboardData } from "../api/ApiFunction";
 
 
 const complaints = [
@@ -10,6 +11,24 @@ const complaints = [
 ];
 
 export default function Dashboard() {
+  const [dashData, setDashData] = useState([])
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await getDashboardData()
+      if(response.status){
+        setDashData(response.data)
+      }
+    } catch (error) {
+      console.log("Error in fetchRemarksData: ", error);
+      toast.error(error.response?.data?.message || "Something went wrong!");
+    }
+  }
+
+  useEffect(()=> {
+    fetchDashboardData()
+  },[])
+
   return (
     <div className="min-h-screen p-0">
       <div className="mx-auto space-y-2">
@@ -26,10 +45,10 @@ export default function Dashboard() {
         </div>
 
         {/* Stats */}
-        <DashboardStats />
+        <DashboardStats data={dashData} />
 
         {/* Charts */}
-        <DashboardChart />
+        <DashboardChart statusDistribution={dashData?.statusDistribution} />
       </div>
     </div>
   );

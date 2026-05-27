@@ -2,6 +2,8 @@ import { useFormik } from "formik";
 import { toast } from "react-toastify";
 import * as Yup from "yup";
 import { useContext, useState } from "react";
+import { uploadExcel } from "../../api/ApiFunction";
+import { useAuth } from "../../context/AuthContext";
 
 const FileUploadModal = ({
   isOpen,
@@ -9,71 +11,45 @@ const FileUploadModal = ({
   onUpload,
   userVendorCode,
   fetchDocuments,
+  fetchData,
   accepts
 }) => {
   if (!isOpen) return null;
   const [isLoading, setisLoading] = useState(false);
 
+  const { adminUser } = useAuth()
+  
+
   const formik = useFormik({
     initialValues: {
     //   fileName: "",
-      file: null,
+      file: {},
     },
     validationSchema: Yup.object({
-      //   file: Yup.mixed().required("File is required"),
-
-      //   file: Yup.mixed()
-      //     .required("File is required")
-      //     .test(
-      //       "fileType",
-      //       "Only images are allowed (PNG, JPG, JPEG)",
-      //       (value) => {
-      //         if (!value) return false;
-      //         const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "application/pdf"];
-      //         return allowedTypes.includes(value.type);
-      //       },
-      //     )
-      //     .test("fileSize", "File size must be less than 5MB", (value) => {
-      //       if (!value) return false;
-      //       return value.size <= 20 * 1024 * 1024; // 20MB
-      //     }),
-
-      file: Yup.mixed()
-        .required("File is required")
-        // .test("fileType", "Only images and PDF are allowed", (value) => {
-        //   if (!value) return false;
-
-        //   return (
-        //     value.type.startsWith("image/") || value.type === "application/pdf"
-        //   );
-        // })
-        // .test("fileSize", "File size must be less than 5MB", (value) => {
-        //   if (!value) return false;
-
-        //   return value.size <= 5 * 1024 * 1024;
-        // }),
+        file: Yup.mixed().required("File is required"),
     }),
     onSubmit: async (values, { resetForm }) => {
       const formData = new FormData();
-      formData.append("document_name", values.fileName);
-    //   formData.append("file", values.file);
+      formData.append("file", values.file);
 
-    //   try {
-    //     setisLoading(true);
-    //     const response = await UploadVendorDocument(formData);
-    //     if (response.status) {
-    //       toast.success("Document uploaded successfully.");
-    //       fetchDocuments();
-    //     } else {
-    //       toast.error(response.message || "Failed to upload document!");
-    //     }
-    //   } catch (error) {
-    //     console.error("Error in FIle Upload: ", error);
-    //   } finally {
-    //     resetForm();
-    //     onClose();
-    //     setisLoading(false);
-    //   }
+      try {
+        setisLoading(true);
+        const response = await uploadExcel(formData);
+        if (response.status) {
+          toast.success("Document uploaded successfully.");
+          fetchData({ empId: adminUser?.empId});
+        } else {
+          toast.error(response.message || "Failed to upload document!");
+        }
+      } catch (error) {
+        console.log("Error in upload Excel: ", error);
+        toast.error(error.response?.data?.message || "Something went wrong!");
+      } finally {
+        resetForm();
+        onClose();
+        setisLoading(false);
+      }
+    
     },
   });
 

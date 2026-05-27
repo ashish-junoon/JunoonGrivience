@@ -10,7 +10,9 @@ import Escalate from "../components/forms/Escalate";
 import Reject from "../components/forms/Reject";
 import { toast } from "react-toastify";
 import Resolve from "../components/forms/Resolve";
-import { getIndivisualComplaint } from "../api/ApiFunction";
+import { getActionHistory, getIndivisualComplaint } from "../api/ApiFunction";
+import { useAuth } from "../context/AuthContext";
+import ReOpen from "../components/forms/ReOpen";
 
 const TicketDetail = () => {
   const [isAssignOpen, setisAssignOpen] = useState(false);
@@ -19,32 +21,36 @@ const TicketDetail = () => {
   const [isReopen, setIsReopen] = useState(false);
   const [ticket, setTicket] = useState(null);
   const [ticketData, setTicketData] = useState({});
-  
+  const [historyData, setHistoryData] = useState([]);
 
   const location = useLocation();
   const ticketId = location?.state?.ticketId;
 
+  const {adminUser} = useAuth()
+  const isAdmin = adminUser?.role === "ADMIN"
+  
+
   // const ticketData = tableData.find((item) => item.complaintRefNo === ticketId);
 
   const fetchData = async (ticketId) => {
-      try {
-        const req = {
-          id: ticketId
-        }
-        const response = await getIndivisualComplaint(req)
-        console.log(response);
-        
-        if(response.status){
-          setTicketData(response.data)
-        }
-      } catch (error) {
-        console.log("Error in Fetching getIndivisualComplaint:", error)
-      }
-  }
+    try {
+      const req = {
+        id: ticketId,
+      };
+      const response = await getIndivisualComplaint(req);
 
-  useEffect(()=> {
-    fetchData(ticketId)
-  }, [])
+      if (response.status) {
+        setTicketData(response.data);
+        fetchActionHistory({ id: ticketId })
+      }
+    } catch (error) {
+      console.log("Error in Fetching getIndivisualComplaint:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData(ticketId);
+  }, []);
 
   if (!ticketData) {
     return (
@@ -60,6 +66,7 @@ const TicketDetail = () => {
     Open: "bg-yellow-100 text-yellow-600",
     Resolved: "bg-green-100 text-green-600",
     Rejected: "bg-red-100 text-red-600",
+    ReOpen: "bg-amber-200 text-amber-600",
   };
 
   const formatDate = (date) =>
@@ -69,8 +76,17 @@ const TicketDetail = () => {
       year: "numeric",
     });
 
+    const formateTime = (date) =>
+    new Date(date).toLocaleTimeString("en-IN")
+    
+
   const handleAssign = (data) => {
     setisAssignOpen(true);
+    setTicket(data);
+  };
+
+  const handleAssignReopen = (data) => {
+    setIsReopen(true);
     setTicket(data);
   };
 
@@ -83,6 +99,26 @@ const TicketDetail = () => {
     setisResolved(true);
     setTicket(data);
   };
+
+  const fetchActionHistory = async (req) => {
+    console.log(req);
+
+    try {
+      const response = await getActionHistory(req);
+      if (response.status) {
+        setHistoryData(response.data);
+      } else {
+        toast.info(response.message || "Unable to fetch history data!");
+      }
+    } catch (error) {
+      console.log("ERROR IN FETCH HISTORY DATA", error);
+      toast.error(error.response?.data?.message || "Something went wrong!");
+    }
+  };
+
+  useEffect(() => {
+    fetchActionHistory({ id: ticketId });
+  }, []);
 
   return (
     <div className="space-y-2 min-h-screen">
@@ -106,9 +142,9 @@ const TicketDetail = () => {
       </div>
 
       {/* 📊 Main Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-2">
         {/* LEFT */}
-        <div className="lg:col-span-2 space-y-2">
+        <div className="lg:col-span-3 space-y-2">
           {/* 👤 User Info */}
           <div className="bg-white p-5 rounded-md shadow-sm">
             <p className="text-sm font-semibold text-primary mb-4">
@@ -136,21 +172,30 @@ const TicketDetail = () => {
                 <p className="text-gray-400 text-xs">Loan Id</p>
                 <p className="font-medium">{ticketData.loanId || "N/A"}</p>
               </div>
-              <div>
+              {/* <div>
                 <p className="text-gray-400 text-xs">
                   Responsible department or owner
                 </p>
-                <p className="font-medium">{ticketData.responsibleDepartment || "N/A"}</p>
-              </div>
-              <div>
+                <p className="font-medium">
+                  {ticketData.responsibleDepartment || "N/A"}
+                </p>
+              </div> */}
+              {!ticketData.closerDate && <div>
+                <p className="text-gray-400 text-xs">
+                  Assigned To
+                </p>
+                <p className="font-medium">
+                  {ticketData.assignedToName || "Not Assigned"}
+                </p>
+              </div>}
+              {/* <div>
                 <p className="text-gray-400 text-xs">
                   Expected Resolution Date
                 </p>
-                {/* <p className="font-medium">{new Date(ticketData.expectedResolutionDate).toDateString()}</p> */}
                 <p className="font-medium">
-                  {/* {new Date(ticketData.expectedResolutionDate).toLocaleDateString()} */}
+                  {new Date(ticketData.expectedResolutionDate).toLocaleDateString()}
                 </p>
-              </div>
+              </div> */}
               <div>
                 <p className="text-gray-400 text-xs">channel</p>
                 <p className="font-medium">{ticketData.channel}</p>
@@ -165,6 +210,10 @@ const TicketDetail = () => {
                   <div>
                     <p className="text-gray-400 text-xs">Closure Date</p>
                     <p className="font-medium">{ticketData.closerDate}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs">Closure By</p>
+                    <p className="font-medium">{ticketData.closedByName}</p>
                   </div>
                 </>
               )}
@@ -195,11 +244,11 @@ const TicketDetail = () => {
           {/* 📎 Documents */}
           <div className="bg-white p-5 rounded-md shadow-sm">
             <div className="flex justify-between items-center mb-4">
-              <p className="text-sm font-semibold text-primary">Document Attachment</p>
+              <p className="text-sm font-semibold text-primary">
+                Document Attachment
+              </p>
 
-              <button className="text-xs text-primary font-semibold cursor-pointer border border-primary/50 hover:bg-primary hover:text-white px-4 py-1 rounded-xl">
-                Upload
-              </button>
+              {/* <button classa */}
             </div>
 
             {ticketData.file && ticketData.file.length > 0 ? (
@@ -221,7 +270,8 @@ const TicketDetail = () => {
                           {doc.name}
                         </p>
                         <p className="text-xs text-gray-400">
-                          Uploaded on {formatDate(doc.uploadedAt)} by {doc.createdBy}
+                          Uploaded on {formatDate(doc.uploadedAt)} by{" "}
+                          {doc.createdBy}
                         </p>
                       </div>
                     </div>
@@ -232,7 +282,7 @@ const TicketDetail = () => {
                         href={`${import.meta.env.VITE_SERVER_BASE_URL}${doc.url}`}
                         target="_blank"
                         className="text-primary hover:underline"
-                        >
+                      >
                         View
                       </a>
                       {/* <a
@@ -253,49 +303,77 @@ const TicketDetail = () => {
         </div>
 
         {/* RIGHT */}
-        <div className="space-y-2">
+        <div className="space-y-2 lg:col-span-2">
           {/* ⏳ Timeline */}
+
           <div className="bg-white p-5 rounded-md shadow-sm">
-            <p className="text-sm font-semibold text-primary mb-4">
+            <p className="text  -sm font-semibold text-primary mb-5">
               Activity Timeline
             </p>
 
-            <div className="relative border-l-2 border-gray-200 pl-4 space-y-2">
-              <div>
+            <div className="relative border-l border-gray-300 pl-6 space-y-2 max-h-[500px] overflow-y-auto">
+              {/* Created */}
+              <div className="relative">
+                <span className="absolute -left-6 -translate-x-1/2 top-2 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+
                 <p className="text-xs text-gray-400">
                   {formatDate(ticketData.createdAt)}
                 </p>
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-sm font-semibold text-gray-800">
                   Complaint Submitted
                 </p>
               </div>
 
-              <div>
-                <p className="text-xs text-gray-400">{formatDate(ticketData.createdAt)}</p>
-                <p className="text-sm font-medium text-gray-700">
-                  Escalate to Lavel 1
-                </p>
-              </div>
+              {/* History */}
+              {historyData?.map((item) => (
+                <div key={item._id} className="relative">
+                  {/* ✅ PERFECTLY CENTERED DOT */}
+                  <span
+                    className={`absolute -left-6 -translate-x-1/2 top-2 w-3 h-3 rounded-full border-2 border-white ${
+                      item.type === "Escalated"
+                        ? "bg-blue-500"
+                        : item.type === "Rejected"
+                          ? "bg-red-500"
+                          : item.type === "Resolved"
+                            ? "bg-green-500"
+                            : "bg-gray-400"
+                    }`}
+                  ></span>
 
-              <div>
-                <p className="text-xs text-gray-400">--</p>
-                <p className="text-sm font-medium text-gray-700">
-                  Escalate to Lavel 2
-                </p>
-              </div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <p className="text-sm font-semibold text-gray-800">
+                        {item.type}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {formatDate(item.createdAt)} • {formateTime(item.createdAt)}
+                      </p>
+                    </div>
 
-              <div>
-                <p className="text-xs text-gray-400">--</p>
-                <p className="text-sm font-medium text-gray-700">
-                  Escalate to Lavel 3
-                </p>
-              </div>
+                    <p className="text-sm text-gray-700">{item.text}</p>
 
-              <div>
-                <p className="text-xs text-gray-400">--</p>
-                <p className="text-sm font-medium text-blue-600">
-                  {ticketData.status}
-                </p>
+                    {item.description && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {item.description}
+                      </p>
+                    )}
+
+                    <p className="text-[11px] text-gray-400 mt-2">
+                      By {item.createdByName} {item.createdFor && `→ ${item.createdForName}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+
+              {/* Final Status */}
+              <div className="relative">
+                <span className="absolute -left-6 -translate-x-1/2 top-2 w-3 h-3 bg-purple-500 rounded-full border-2 border-white"></span>
+
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-purple-700">
+                    Current Status: {ticketData.status}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -329,14 +407,16 @@ const TicketDetail = () => {
                 </>
               )}
 
-              {ticketData.closerDate && (
+              {ticketData.closerDate && isAdmin && (
                 <button
-                  onClick={() => setIsReopen(true)}
+                  onClick={() => handleAssignReopen(ticketData)}
                   className="w-full py-2 rounded bg-primary text-gray-100 text-sm hover:bg-primary/80 cursor-pointer"
                 >
                   ReOpen Ticket
                 </button>
               )}
+
+              {ticketData.closerDate && !isAdmin && <p className="text-sm text-gray-400">Actions Not Allowed</p>}
             </div>
           </div>
         </div>
@@ -347,7 +427,12 @@ const TicketDetail = () => {
         onClose={() => setisAssignOpen(false)}
         title="Escalate Complaint"
       >
-        <Escalate setisAssignOpen={setisAssignOpen} ticket={ticket} fetchData={fetchData} />
+        <Escalate
+          isAssignOpen={isAssignOpen}
+          setisAssignOpen={setisAssignOpen}
+          ticket={ticket}
+          fetchData={fetchData}
+        />
       </Modal>
 
       <Modal
@@ -356,10 +441,11 @@ const TicketDetail = () => {
         title="Reject Complaint"
       >
         <Reject
-            setisReject={setisReject}
-            ticket={ticket}
-            fetchData={fetchData}
-          />
+          isReject={isReject}
+          setisReject={setisReject}
+          ticket={ticket}
+          fetchData={fetchData}
+        />
       </Modal>
 
       <Modal
@@ -367,7 +453,12 @@ const TicketDetail = () => {
         onClose={() => setisResolved(false)}
         title="Mark as Resolved"
       >
-        <Resolve setisResolved={setisResolved} ticket={ticket} fetchData={fetchData} />
+        <Resolve
+          isResolved={isResolved}
+          setisResolved={setisResolved}
+          ticket={ticket}
+          fetchData={fetchData}
+        />
       </Modal>
 
       <Modal
@@ -375,38 +466,7 @@ const TicketDetail = () => {
         onClose={() => setIsReopen(false)}
         title="ReOpen Ticket"
       >
-        <div className="p-2">
-          <div className="grid grid-cols-2">
-            {/* <div>
-              <TextInput label="Remarks" />
-            </div> */}
-
-            <div>
-            <SelectInput
-              label="Remarks"
-              placeholder="Remarks"
-              name="remarks"
-              options={RemarksData}
-              // value={formik.values.remarks}
-              // onBlur={formik.handleBlur}
-              // onChange={formik.handleChange}
-            />
-          </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 justify-end">
-          <Button
-            onClick={() => setIsReopen(false)}
-            btnName="Cancel"
-            style="cursor-pointer border border-gray-300"
-          />
-          <Button
-            onClick={() => setIsReopen(false)}
-            btnName="ReOpen"
-            style="cursor-pointer bg-primary hover:bg-primary/80 text-white"
-          />
-        </div>
+        <ReOpen setisReOpen={setIsReopen} isReOpen={isReopen} ticket={ticket} fetchData={fetchData} />
       </Modal>
     </div>
   );

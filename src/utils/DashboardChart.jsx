@@ -1,6 +1,6 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 
-const DashboardChart = () => {
+const DashboardChart = ({statusDistribution}) => {
   const data = [
     { name: "Jan", complaints: 40 },
     { name: "Feb", complaints: 70 },
@@ -15,53 +15,22 @@ const DashboardChart = () => {
   ];
 
   const distribution = [
-    { label: "Resolved", val: 65 },
-    { label: "Pending", val: 25 },
-    { label: "Rejected", val: 10 },
+    { label: "Resolved", val: statusDistribution?.resolvedPer },
+    { label: "Pending", val: statusDistribution?.pendingPer },
+    { label: "Rejected", val: statusDistribution?.rejectedPer },
   ];
 
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {/* Overview */}
-        <div className="bg-white rounded-md border border-gray-100 p-6">
-          {/* <div className="flex justify-between items-center mb-6">
-              <h2 className="font-semibold text-gray-800">Complaint Overview</h2>
-              <span className="text-xs text-gray-400">Monthly</span>
-            </div>
-
-            <div className="h-44 flex items-end gap-4">
-              {[40, 70, 50, 90, 60, 40, 70, 50, 90, 60].map((h, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-xl bg-gradient-to-t from-primary to-primary/40 opacity-80"
-                  style={{ height: `${h}%` }}
-                />
-              ))}
-            </div> */}
-
-          <div className="h-64">
-            {/* <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data}>
-                <XAxis dataKey="name" />
-                <Tooltip />
-                <Bar
-                  dataKey="complaints"
-                  radius={[6, 6, 0, 0]}
-                  fill="#088395"
-                />
-              </BarChart>
-            </ResponsiveContainer> */}
-          </div>
-        </div>
-
+        
         {/* Distribution */}
-        <div className="bg-white rounded-md border border-gray-100 p-6">
-          <h2 className="font-semibold text-gray-800 mb-6">
+        <div className="bg-white rounded-md border border-gray-100 p-6 col-span-2">
+          <h2 className="font-semibold text-gray-800 mb-4">
             Status Distribution
           </h2>
 
-          <div className="space-y-5">
+          <div className="space-y-3">
             {distribution?.map((item, i) => (
               <div key={i}>
                 <div className="flex justify-between text-sm text-gray-600 mb-1">
@@ -78,6 +47,39 @@ const DashboardChart = () => {
             ))}
           </div>
         </div>
+
+
+        {/* Overview */}
+        {/* <div className="bg-white rounded-md border border-gray-100 p-6"> */}
+          {/* <div className="flex justify-between items-center mb-6">
+              <h2 className="font-semibold text-gray-800">Complaint Overview</h2>
+              <span className="text-xs text-gray-400">Monthly</span>
+            </div>
+
+            <div className="h-44 flex items-end gap-4">
+              {[40, 70, 50, 90, 60, 40, 70, 50, 90, 60].map((h, i) => (
+                <div
+                  key={i}
+                  className="flex-1 rounded-xl bg-gradient-to-t from-primary to-primary/40 opacity-80"
+                  style={{ height: `${h}%` }}
+                />
+              ))}
+            </div> */}
+
+          {/* <div className="h-64"> */}
+            {/* <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <XAxis dataKey="name" />
+                <Tooltip />
+                <Bar
+                  dataKey="complaints"
+                  radius={[6, 6, 0, 0]}
+                  fill="#088395"
+                />
+              </BarChart>
+            </ResponsiveContainer> */}
+          {/* </div> */}
+        {/* </div> */}
       </div>
     </>
   );

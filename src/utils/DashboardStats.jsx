@@ -1,44 +1,59 @@
-const stats = [
-  { title: "Total Complaints Received", value: "12,450", change: "+15%" },
-  { title: "Total Complaints Resolved", value: "9,257", change: "+8%" },
-  { title: "Open Complaints", value: "3,120", change: "-2%" },
-  { title: "Delay Complaints", value: "540", change: "+5%" },
-  { title: "Repeat Complaints", value: "320", change: "+3%" },
-  { title: "Escalated Complaints", value: "210", change: "+4%" },
-  { title: "Serious/Sensitive Complaints", value: "95", change: "+2%" },
-  { title: "Complaints Older Than 30 Days", value: "180", change: "-1%" },
+import { useEffect, useState } from "react";
+import {useAuth} from "../context/AuthContext"
+
+const DashboardStats = ({data}) => {
+  const [otherStats, setOtherStats] = useState([]);
+  const {adminUser} = useAuth()
+  
+  const isAdmin = adminUser?.role == "ADMIN"
+
+  const stateData = data?.summary;
+
+  const stats = [
+  { title: "Total Complaints Received", value:  stateData?.totalComplaints},
+  { title: "Total Complaints Resolved", value: stateData?.resolvedComplaints  },
+  { title: "Open Complaints", value: stateData?.openComplaints },
+  { title: "Delay Complaints", value: stateData?.delayComplaints },
+  { title: "ReOpen Complaints", value: stateData?.reOpenComplaints },
+  { title: "Complaints Older Than 30 Days", value: stateData?.oldComplaints },
+  // { title: "Escalated Complaints", value: stateData?.totalComplaints },
+  // { title: "Serious/Sensitive Complaints", value: stateData?.totalComplaints },
 ];
 
-const otherStats = [
-  {
-    title: "Product-wise Complaints",
-    value: [
-      { name: "Paisa Udhaar", value: 10 },
-      { name: "Earlywages", value: 12 },
-      { name: "Others", value: 2 },
-    ],
-  },
-  {
-    title: "Channel-wise Complaints",
-    value: [
-      { name: "Websites", value: 100 },
-      { name: "Call", value: 70 },
-      { name: "Mail", value: 50 },
-    ],
-  },
-  {
-    title: "Category-wise Analysis",
-    value: [
-      { name: "Category 1", value: 14 },
-      { name: "Category 2", value: 34 },
-      { name: "Category 3", value: 1 },
-    ],
-  },
-];
+const transformStats = (data) => {
+  return [
+    {
+      title: "Product-wise Complaints",
+      value: data?.productWise?.map((item) => ({
+        name: item._id,
+        value: item.count,
+      })),
+    },
+    {
+      title: "Channel-wise Complaints",
+      value: data?.channelWise?.map((item) => ({
+        name: item._id,
+        value: item.count,
+      })),
+    },
+    {
+      title: "Category-wise Complaints",
+      value: data?.categoryWise?.map((item) => ({
+        name: item._id,
+        value: item.count,
+      })),
+    },
+  ];
+};
 
-const DashboardStats = () => {
-  const mainStats = stats.slice(0, 8);
-  // const otherStats = stats.slice(8);
+useEffect(() => {
+  // if (apiData) {
+    const formatted = transformStats(data);
+    setOtherStats(formatted);
+  // }
+}, [data]);
+
+const mainStats = stats.slice(0, 8);
 
   return (
     <div className="space-y-1">
@@ -71,7 +86,7 @@ const DashboardStats = () => {
       </div>
 
       {/* 🔥 COMPACT GRID (Small Tiles) */}
-      <div className="bg-white rounded-md border border-gray-200 shadow-sm p-4">
+      {isAdmin && <div className="bg-white rounded-md border border-gray-200 shadow-sm p-4">
         <p className="text-sm font-semibold text-gray-700 mb-3">
           Detailed Insights
         </p>
@@ -120,7 +135,7 @@ const DashboardStats = () => {
             </div>
           ))}
         </div> */}
-      </div>
+      </div>}a
     </div>
   );
 };

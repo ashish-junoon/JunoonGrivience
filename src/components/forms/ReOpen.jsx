@@ -4,15 +4,14 @@ import Button from "../../utils/Button";
 import { useFormik } from "formik";
 import { toast } from "react-toastify";
 import SelectInput from "../fields/SelectInput";
-import { getRemarksByType, rejectComplaint } from "../../api/ApiFunction";
+import { getRemarksByType, rejectComplaint, reOpenComplaint } from "../../api/ApiFunction";
 import * as Yup from "yup";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-const Reject = ({ setisReject, ticket, fetchData, isReject }) => {
+const ReOpen = ({ setisReOpen, ticket, fetchData, isReOpen }) => {
 
   const [RemarksData ,setRemarksData] = useState([])
-  // console.log(ticket?.complaintRefNo);
   const {adminUser} = useAuth()
   const navigate = useNavigate()
   
@@ -49,20 +48,20 @@ const Reject = ({ setisReject, ticket, fetchData, isReject }) => {
       console.log(req);
 
       try {
-        const response = await rejectComplaint(req);
+        const response = await reOpenComplaint(req);
         if (response.status) {
-          setisReject(false);
-          toast.success(response.message || "Complait Rejected");
+          setisReOpen(false);
+          toast.success(response.message || "Complait reOpen");
           fetchData(ticket?.complaintRefNo);
           resetForm();
           if(location.pathname === "/tickets/ticket-detail"){
             navigate(-1)
           }
         } else {
-          toast.info(response.message || "Error in rejecting complaint!");
+          toast.info(response.message || "Error in reOpening complaint!");
         }
       } catch (error) {
-        console.log("Error in rejectComplaint", error.response?.data?.message);
+        console.log("Error in reOpening", error.response?.data?.message);
         toast.error(error.response?.data?.message || "Something went wrong!")
       }
     },
@@ -97,14 +96,14 @@ const Reject = ({ setisReject, ticket, fetchData, isReject }) => {
       }
     }
     useEffect(()=> {
-      if(!isReject) return
+      if(!isReOpen) return
 
       const req = {
-        type: "REJECT"
+        type: "REOPEN"
       }
   
       fetchRemarksData(req)
-    }, [ticket, isReject])
+    }, [ticket, isReOpen])
 
   return (
     <form onSubmit={formik.handleSubmit}>
@@ -147,7 +146,7 @@ const Reject = ({ setisReject, ticket, fetchData, isReject }) => {
 
       <div className="flex items-center gap-2 justify-end">
         <Button
-          onClick={() => setisReject(false)}
+          onClick={() => setisReOpen(false)}
           btnName="Cancel"
           style="cursor-pointer border border-gray-300"
         />
@@ -162,4 +161,4 @@ const Reject = ({ setisReject, ticket, fetchData, isReject }) => {
   );
 };
 
-export default Reject;
+export default ReOpen;

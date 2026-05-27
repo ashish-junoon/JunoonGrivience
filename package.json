@@ -14,6 +14,7 @@
     "axios": "^1.15.0",
     "formik": "^2.4.9",
     "framer-motion": "^12.38.0",
+    "papaparse": "^5.5.3",
     "react": "^19.1.1",
     "react-csv": "^2.2.2",
     "react-data-table-component": "^7.7.0",

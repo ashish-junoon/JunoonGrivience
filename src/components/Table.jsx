@@ -1,6 +1,8 @@
 import React, { useState, useMemo, Children } from "react";
 import DataTable from "react-data-table-component";
+import Papa from "papaparse";
 // import { CSVLink } from "react-csv";
+// import { CSVLink } from "react-csv/lib/components/Link";
 // import Tooltip from "./utils/Tooltip";
 import Icon from "../utils/Icons";
 
@@ -16,7 +18,7 @@ const Table = ({
   exportable = false,
   csvData,
   filename,
-  children
+  children,
 }) => {
   const [filterText, setFilterText] = useState("");
 
@@ -24,10 +26,35 @@ const Table = ({
   const filteredData = useMemo(() => {
     return data.filter((item) =>
       Object.values(item).some((value) =>
-        String(value).toLowerCase().includes(filterText.toLowerCase())
-      )
+        String(value).toLowerCase().includes(filterText.toLowerCase()),
+      ),
     );
   }, [data, filterText]);
+
+  // 🔥 Optimized filter
+  const filteredcsvData = useMemo(() => {
+    if (!filterText) return csvData;
+
+    const search = filterText.toLowerCase();
+
+    return csvData.filter((item) =>
+      Object.values(item).some(
+        (value) => value && value.toString().toLowerCase().includes(search),
+      ),
+    );
+  }, [csvData, filterText]);
+
+  const downloadCSV = ({ data, filename }) => {
+    const csv = Papa.unparse(data);
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename || "data.csv";
+    link.click();
+  };
 
   // 🎨 Screenshot-like table styles
   // const customStyles = {
@@ -61,7 +88,7 @@ const Table = ({
   //   },
   // };
 
-    const customStyles = {
+  const customStyles = {
     table: {
       style: {
         backgroundColor: "#ffffff",
@@ -111,19 +138,10 @@ const Table = ({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200">
-      
       {/* 🔥 Header */}
       <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        
-        {/* Title */}
-        {/* <div>
-          <h2 className="text-md font-semibold text-gray-700">{title}</h2>
-          <p className="text-xs text-gray-400">{subtitle}</p>
-        </div> */}
-
         {/* Actions */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-
+        <div className="flex flex-col md:justify-between w-full sm:flex-row items-stretch sm:items-center gap-3">
           {/* Search */}
           <div className="relative w-full sm:w-72">
             <input
@@ -163,25 +181,27 @@ const Table = ({
           </div> */}
 
           {/* Export Button */}
-          {/* <div>
-              {exportable === true && (
-                  <CSVLink
-                      data={csvData ? csvData : filteredData}
-                      filename={filename ? filename : "export.csv"}
-                      className="px-3 py-1 bg-primary text-white text-sm rounded-lg flex items-center gap-2 shadow"
-                  >
-                      <Icon name="RiFileExcel2Line" size={16} color="white" />
-                      Export
-                  </CSVLink>
-              )}
-          </div> */}
+          <div>
+            {exportable === true && (
+              <button
+                className="px-3 py-2 bg-primary hover:bg-primary/90 text-white text-sm rounded-md flex items-center gap-2 shadow cursor-pointer"
+                onClick={() =>
+                  downloadCSV({
+                    data: filteredcsvData ? filteredcsvData : filteredData,
+                    filename,
+                  })
+                }
+              >
+                Download Excel
+              </button>
+            )}
+          </div>
 
           {/* Download UI Button (visual only like screenshot) */}
           {/* <button className="px-3 py-2 border rounded-md text-sm text-gray-600 flex items-center gap-2 border-gray-300 hover:bg-gray-100 transition">
             <Icon name="RiDownloadLine" size={16} />
             Download
           </button> */}
-
         </div>
 
         {children && <div>{children}</div>}

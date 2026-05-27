@@ -6,9 +6,10 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { createUsers } from "../../api/ApiFunction";
 import { toast } from "react-toastify";
+import { products } from "../../assets/data";
 
-const AddUser = ({ userData, setIsOpen }) => {
-//   console.log(userData);
+const AddUser = ({ userData, setIsOpen, fetchData }) => {
+  //   console.log(userData);
 
   const userformik = useFormik({
     initialValues: {
@@ -17,8 +18,6 @@ const AddUser = ({ userData, setIsOpen }) => {
       mobile: "",
       email: "",
       product: "",
-      password: "",
-      // designation: "",
     },
     validationSchema: Yup.object({
       name: Yup.string().required("Name is required"),
@@ -27,19 +26,35 @@ const AddUser = ({ userData, setIsOpen }) => {
         .required("Email is required"),
       mobile: Yup.string().required("Mobile is required"),
       level: Yup.string().required("Level is required"),
+      product: Yup.string().when("level", {
+        is: "3",
+        then: (schema) => schema.notRequired(),
+        otherwise: (schema) => schema.required("Product is required"),
+      }),
     }),
     onSubmit: async (values) => {
+      
+      const req = {
+        name: values.name,
+        level: values.level,
+        email: values.email,
+        mobile: values.mobile,
+        product: values.level == "3" ? "" : values.product,
+        empId: userData?.empId || ""
+      };
+
       try {
-        // const
-        const response = await createUsers(values)
-        if(response.status){
-          toast.success(response.message || "User Registered.")
-          setIsOpen(false)
-        }else{
-          toast.info(response.message)
+        const response = await createUsers(req);
+        if (response.status) {
+          toast.success(response.message || "User Registered.");
+          setIsOpen(false);
+          fetchData();
+        } else {
+          toast.info(response.message);
         }
       } catch (error) {
-        console.log("Error in Adding User: ", error)
+        console.log("Error in Adding User: ", error);
+        toast.error(error.response?.data?.message || "Something went wrong!");
       }
     },
   });
@@ -99,6 +114,7 @@ const AddUser = ({ userData, setIsOpen }) => {
               name="mobile"
               placeholder="Enter mobile"
               label="Mobile No."
+              maxLength={10}
               onChange={userformik.handleChange}
               onBlur={userformik.handleChange}
               value={userformik.values.mobile}
@@ -121,8 +137,8 @@ const AddUser = ({ userData, setIsOpen }) => {
               <p className="text-red-500 text-xs">{userformik.errors.email}</p>
             )}
           </div>
-          
-          <div>
+
+          {/* <div>
             <TextInput
               name="password"
               placeholder="Enter Password"
@@ -134,54 +150,33 @@ const AddUser = ({ userData, setIsOpen }) => {
             {userformik.errors.password && userformik.touched.password && (
               <p className="text-red-500 text-xs">{userformik.errors.password}</p>
             )}
-          </div>
-
-          <div>
-            <SelectInput
-              name="product"
-              placeholder="Select Product"
-              label="Select Product"
-              options={[
-                { label: "PU", value: "PU" },
-                { label: "EW", value: "EW" },
-                // { label: "Other", value: "" },
-              ]}
-              onChange={userformik.handleChange}
-              onBlur={userformik.handleChange}
-              value={userformik.values.product}
-            />
-            {userformik.errors.product && userformik.touched.product && (
-              <p className="text-red-500 text-xs">
-                {userformik.errors.product}
-              </p>
-            )}
-          </div>
-
-          {/* <div>
-            <SelectInput
-              name="designation"
-              placeholder="Select Designation"
-              label="Select Designation"
-              options={[
-                { label: "D1", value: "D1" },
-                { label: "D2", value: "D2" },
-                { label: "D3", value: "D3" },
-              ]}
-              onChange={userformik.handleChange}
-              onBlur={userformik.handleChange}
-              value={userformik.values.designation}
-            />
-            {userformik.errors.product && userformik.touched.product && (
-              <p className="text-red-500 text-xs">
-                {userformik.errors.product}
-              </p>
-            )}
           </div> */}
+
+          {userformik.values.level != "3" && (
+            <div>
+              <SelectInput
+                name="product"
+                placeholder="Select Product"
+                label="Select Product"
+                options={products}
+                onChange={userformik.handleChange}
+                onBlur={userformik.handleChange}
+                value={userformik.values.product}
+              />
+              {userformik.errors.product && userformik.touched.product && (
+                <p className="text-red-500 text-xs">
+                  {userformik.errors.product}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 justify-end mt-5">
           <Button
-            onClick={() => {setIsOpen(false), userformik.resetForm()}}
+            onClick={() => {
+              (setIsOpen(false), userformik.resetForm());
+            }}
             btnName="Cancel"
             style="cursor-pointer border border-gray-300"
           />

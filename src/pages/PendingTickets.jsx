@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Table from "../components/Table";
 import { tableData } from "../assets/data";
 import Button from "../utils/Button";
@@ -14,6 +14,8 @@ import TextInput from "../components/fields/TextInput";
 import SelectInput from "../components/fields/SelectInput";
 import Escalate from "../components/forms/Escalate";
 import Reject from "../components/forms/Reject";
+import { getOpenComplaints } from "../api/ApiFunction";
+import { useAuth } from "../context/AuthContext";
 
 const PendingTickets = () => {
   const [open, setOpen] = useState(false);
@@ -21,8 +23,11 @@ const PendingTickets = () => {
   const [isAssignOpen, setisAssignOpen] = useState(false);
   const [isReject, setisReject] = useState(false);
   const [ticket, setTicket] = useState(null);
-
+  const [Tickets, setTickets] = useState([]);
+  const [csvData, setcsvData] = useState([])
   const navigate = useNavigate();
+
+  const { adminUser } = useAuth();
 
   const handleAssign = (data) => {
     setisAssignOpen(true);
@@ -36,7 +41,7 @@ const PendingTickets = () => {
 
   const columnsData = [
     {
-      name: "Id",
+      name: "S.No",
       // selector: (row, index) => row.id,
       selector: (row, index) => index + 1,
       sortable: true,
@@ -48,21 +53,21 @@ const PendingTickets = () => {
       sortable: true,
     },
     {
-      name: "Applicant Name",
-      selector: (row) => row.name,
+      name: "customer Name",
+      selector: (row) => row.customerName,
       sortable: true,
     },
     {
       name: "Loan Id",
-      selector: (row) => row.loanId,
+      selector: (row) => row.loanId || "N/A",
       sortable: true,
     },
     {
-      name: "Reason",
+      name: "Category",
       width: "250px",
       // selector: (row) => row.reason,
       cell: (row) => {
-        return <p title={row.description}>{row.reason}</p>;
+        return <p title={row.complaintDescription}>{row.complaintCategory}</p>;
       },
     },
     {
@@ -70,15 +75,23 @@ const PendingTickets = () => {
       selector: (row) => row.mobile,
     },
     {
+      name: "product",
+      selector: (row) => row.productName,
+    },
+    adminUser?.role && {
+      name: "assigned To",
+      selector: (row) => row.assignedToName,
+    },
+    {
       name: "Created Date",
       sortable: true,
       selector: (row) => row.createdAt,
     },
-    // {
-    //   name: "Loan Amount",
-    //   sortable: true,
-    //   selector: (row) => row.amount,
-    // },
+    {
+      name: "Created By",
+      sortable: true,
+      selector: (row) => row.createdByName || "USER",
+    },
     {
       name: "Status",
       // selector: (row) => row.status,
@@ -98,7 +111,7 @@ const PendingTickets = () => {
           <span
             onClick={() =>
               navigate("/tickets/ticket-detail", {
-                state: { ticketId: row.complaintRefNo },
+                state: { ticketId: row.complaintRefNo , isOpen: true},
               })
             }
           >
@@ -107,20 +120,20 @@ const PendingTickets = () => {
         );
       },
     },
-    {
-      name: "Action",
-      cell: (row) => {
-        return (
-          <span
-            onClick={() => handleAssign(row)}
-            // className="text-primary bg-primary/20 shadow-2xl font-bold text-[10px] border border-primary px-2 py-1 rounded-sm italic"
-          >
-            {/* Assign */}
-            <Icon name="RiShareForwardFill" size={20} />
-          </span>
-        );
-      },
-    },
+    // {
+    //   name: "Action",
+    //   cell: (row) => {
+    //     return (
+    //       <span
+    //         onClick={() => handleAssign(row)}
+    //         // className="text-primary bg-primary/20 shadow-2xl font-bold text-[10px] border border-primary px-2 py-1 rounded-sm italic"
+    //       >
+    //         {/* Assign */}
+    //         <Icon name="RiShareForwardFill" size={20} />
+    //       </span>
+    //     );
+    //   },
+    // },
     {
       name: "Reject",
       cell: (row) => {
@@ -138,16 +151,59 @@ const PendingTickets = () => {
     },
   ];
 
+  const fetchData = async () => {
+    try {
+      const req = {
+        empId: adminUser?.empId,
+      };
+      const response = await getOpenComplaints(req);
+      if (response.status) {
+        setTickets(response.data);
+      }
+    } catch (error) {
+      console.log("Error in Fetching complaints", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!Tickets || Tickets.length === 0) return;
+  
+    const ExportableData = Tickets.map((data) => ({
+      "Complaint Id": data?.complaintRefNo,
+      "Customer Name": data?.customerName,
+      "Loan Id": data?.loanId || "N/A",
+      "Mobile": data?.mobile,
+      "Email": data?.email,
+      "Product Name": data?.productName,
+      "Complaint Category": data?.complaintCategory,
+      "Complaint Description": data?.complaintDescription,
+      "Created By": data?.createdByName,
+      "Status": data?.status,
+      "Assigned To": data?.assignedToName || "N/A",
+      // "Closed By": data?.closedByName || "-",
+      "ReOpen By": data?.reOpenByName || "-",
+      "Created At": data?.createdAt,
+    }));
+  
+    setcsvData(ExportableData);
+  }, [Tickets]);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   return (
     <>
       <section>
         <div className="mt-0">
           <Table
             columns={columnsData}
-            data={tableData}
+            data={Tickets}
             title="Pending Tickets"
+            csvData={csvData}
             // handleFilter={handleFilterBtn}
             exportable={true}
+            filename="Inprocess Tickets"
           />
         </div>
 
@@ -157,6 +213,7 @@ const PendingTickets = () => {
           title="Escalate Complaint"
         >
           <Escalate
+            isAssignOpen={isAssignOpen}
             setisAssignOpen={setisAssignOpen}
             ticket={ticket}
           />
@@ -168,6 +225,7 @@ const PendingTickets = () => {
           title="Reject Complaint"
         >
           <Reject
+            isReject={isReject}
             setisReject={setisReject}
             ticket={ticket}
           />

@@ -9,5 +9,10 @@ export default defineConfig({
       usePolling: true,
     },
   },
+
+  // optimizeDeps: {
+  //   include: ['react-csv'], // 👈 FIX
+  // },
+
   plugins: [react(), tailwindcss()],
 })

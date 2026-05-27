@@ -4,12 +4,15 @@ import {
   RiMenuLine,
 } from "react-icons/ri";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Navbar = ({ setIsMobileOpen }) => {
   const [openProfile, setOpenProfile] = useState(false);
   const location = useLocation()
   const path = location?.pathname?.split("/").at(-1).replaceAll("-", " ")
   const navigate = useNavigate()
+
+  const {adminUser, logout} = useAuth()
   
   return (
     <div className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 shadow-sm w-full">
@@ -60,10 +63,10 @@ const Navbar = ({ setIsMobileOpen }) => {
             {/* Hide text on mobile */}
             <div className="hidden sm:flex flex-col -space-y-0.5">
               <span className="text-sm font-medium text-gray-700">
-                Rohit
+                {adminUser?.name || "N/A"}
               </span>
               <span className="text-xs text-gray-500">
-                rohitkoli@gmail.com
+                {adminUser?.email || "N/A"}
               </span>
             </div>
           </div>
@@ -71,13 +74,13 @@ const Navbar = ({ setIsMobileOpen }) => {
           {/* Dropdown */}
           {openProfile && (
             <div className="absolute right-0 mt-3 w-44 bg-white border border-gray-200 rounded-md shadow-lg py-0 z-50 overflow-hidden">
-              <Link to="/profile" className="w-full text-left px-4 py-3 text-sm hover:bg-gray-100 block">
+              <Link onClick={()=>  setOpenProfile(false)} to="/profile" className="w-full text-left px-4 py-3 text-sm hover:bg-gray-100 block">
                 Profile
               </Link>
               {/* <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">
                 Settings
               </button> */}
-              <button onClick={()=> navigate("/login")} className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-50 cursor-pointer">
+              <button onClick={()=> logout("USER")} className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-50 cursor-pointer">
                 Logout
               </button>
             </div>
