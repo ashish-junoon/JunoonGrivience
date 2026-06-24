@@ -13,16 +13,7 @@ import {
 import Icon from "../../utils/Icons";
 import Modal from "../../utils/Modal";
 import { FaRegEdit } from "react-icons/fa";
-
-
-
-const TYPES = [
-  { label: "Complaint", value: "COMPLAINT" },
-  { label: "Escalation", value: "ESCALATION" },
-  { label: "Reject", value: "REJECT" },
-  { label: "Resolve", value: "RESOLVE" },
-  { label: "ReOpen", value: "REOPEN" },
-];
+import { PRIORITY, priorityStyles, TYPES } from "../../assets/data";
 
 const TAB_OPTIONS = [{ label: "All", value: "ALL" }, ...TYPES];
 
@@ -46,12 +37,19 @@ const RemarksMaster = () => {
     initialValues: {
       label: "",
       description: "",
-      type: "COMPLAINT",
+      type: "",
+      priority: "",
     },
 
     validationSchema: Yup.object({
       label: Yup.string().required("Label is required"),
       type: Yup.string().required("Type is required"),
+      // priority: Yup.string().required("Priority is required"),
+      priority: Yup.string().when("type", {
+        is: "COMPLAINT",
+        then: (schema) => schema.required("Priority is required"),
+        otherwise: (schema) => schema.notRequired(),
+      }),
       description: Yup.string()
         .max(200, "Max 200 chars allowed")
         .required("Description is required"),
@@ -62,8 +60,9 @@ const RemarksMaster = () => {
         label: values.label,
         value: values.description,
         type: values.type,
+        priority: values.priority,
         empId: adminUser?.empId,
-        id: remarkData?._id || ""
+        id: remarkData?._id || "",
       };
 
       try {
@@ -117,20 +116,21 @@ const RemarksMaster = () => {
   };
 
   const handleUpdate = (data) => {
-    setIsModalOpen(true)
-    setRemarkData(data)
+    setIsModalOpen(true);
+    setRemarkData(data);
     console.log(data);
-  }
+  };
 
-  useEffect(()=> {
-    if(!remarkData) return
+  useEffect(() => {
+    if (!remarkData) return;
 
     formik.setValues({
       label: remarkData?.value,
       description: remarkData?.description,
       type: remarkData?.type,
-    })
-  }, [remarkData])
+      priority: remarkData?.priority,
+    });
+  }, [remarkData]);
 
   const ErrorMsg = ({ error, touched }) => {
     if (!touched || !error) return null;
@@ -160,7 +160,9 @@ const RemarksMaster = () => {
         </div>
 
         <button
-          onClick={() => {setRemarkData({}), formik.resetForm(), setIsModalOpen(true)}}
+          onClick={() => {
+            (setRemarkData({}), formik.resetForm(), setIsModalOpen(true));
+          }}
           className="flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-md text-sm cursor-pointer"
         >
           <Icon name="MdOutlineAddCircle" size={18} />
@@ -176,6 +178,7 @@ const RemarksMaster = () => {
               <th className="p-3 text-left">Label</th>
               <th className="p-3 text-left">Description</th>
               <th className="p-3 text-left">Type</th>
+              <th className="p-3 text-left">Priority</th>
               <th className="p-3 text-left">Created</th>
               <th className="p-3 text-center">Update</th>
               <th className="p-3 text-center">Action</th>
@@ -184,36 +187,47 @@ const RemarksMaster = () => {
 
           <tbody>
             {data.length > 0 ? (
-              data.map((item) => (
-                <tr key={item._id} className="border-t hover:bg-gray-50">
-                  <td className="p-3 font-medium">{item.label}</td>
+              data.map((item) => {
+                if (!item?._id) return;
+                return (
+                  <tr key={item._id} className="border-t hover:bg-gray-50">
+                    <td className="p-2 font-medium">{item.label}</td>
 
-                  <td className="p-3 text-gray-600">{item.description}</td>
+                    <td className="p-2 text-gray-600">{item.description}</td>
 
-                  <td className="p-3">
-                    <span
-                      className={`px-2 py-1 rounded text-xs ${typeStyles[item.type]}`}
-                    >
-                      {item.type}
-                    </span>
-                  </td>
+                    <td className="p-2">
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${typeStyles[item.type]}`}
+                      >
+                        {item.type}
+                      </span>
+                    </td>
 
-                  <td className="p-3 text-gray-500 text-xs">
-                    {new Date(item.createdAt).toLocaleDateString()}
-                  </td>
+                    <td className="p-2">
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${priorityStyles[item.priority]}`}
+                      >
+                        {item.priority}
+                      </span>
+                    </td>
 
-                  <td className="p-3 text-center">
-                    <button onClick={() => handleUpdate(item)}>
-                      <Icon name="FaRegEdit" color="blue" size={20} />
-                    </button>
-                  </td>
-                  <td className="p-3 text-center">
-                    <button onClick={() => handleRemove(item)}>
-                      <Icon name="MdOutlineDeleteSweep" color="red" />
-                    </button>
-                  </td>
-                </tr>
-              ))
+                    <td className="p-2 text-gray-500 text-xs">
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </td>
+
+                    <td className="p-2 text-center">
+                      <button onClick={() => handleUpdate(item)}>
+                        <Icon name="FaRegEdit" color="blue" size={20} />
+                      </button>
+                    </td>
+                    <td className="p-2 text-center">
+                      <button onClick={() => handleRemove(item)}>
+                        <Icon name="MdOutlineDeleteSweep" color="red" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan="5" className="p-5 text-center text-gray-500">
@@ -235,7 +249,7 @@ const RemarksMaster = () => {
           <div>
             <TextInput
               name="label"
-              placeholder="Label"
+              placeholder="Label Name"
               value={formik.values.label}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
@@ -249,7 +263,7 @@ const RemarksMaster = () => {
           <div>
             <SelectInput
               name="type"
-              placeholder="Select"
+              placeholder="Select Query Type"
               value={formik.values.type}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
@@ -260,6 +274,23 @@ const RemarksMaster = () => {
               touched={formik.touched.type}
             />
           </div>
+
+          {formik.values.type == "COMPLAINT" && (
+            <div>
+              <SelectInput
+                name="priority"
+                placeholder="Select Priority"
+                value={formik.values.priority}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                options={PRIORITY}
+              />
+              <ErrorMsg
+                error={formik.errors.priority}
+                touched={formik.touched.priority}
+              />
+            </div>
+          )}
 
           <div>
             <textarea

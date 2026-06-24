@@ -9,10 +9,16 @@ import { UserData, channels, products, tableData } from "../../assets/data.js";
 import Background from "../../utils/Background.jsx";
 import Icon from "../../utils/Icons.jsx";
 import { addDays } from "../../Functions/CommonFunction.jsx";
-import { createComplaint, getRemarksByType, getUserDetailsWithLoanId } from "../../api/ApiFunction.jsx";
+import {
+  createComplaint,
+  getRemarksByType,
+  getUserDetailsWithLoanId,
+} from "../../api/ApiFunction.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import Typewriter from "../../utils/TypeWriterLoader.jsx/Typewriter.jsx";
+import SpinnerLoader from "../../utils/SpinnerLoader/SpinnerLoader.jsx";
 
-const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
+const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
   // const [loanData, setLoanData] = useState([]);
   const [hasLoan, setHasLoan] = useState("YES");
   const [hasApplied, setHasApplied] = useState("NO");
@@ -22,8 +28,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
   const [isReadOnly, setisReadOnly] = useState(true);
   const [RemarksData, setRemarksData] = useState([]);
 
-  const {adminUser} = useAuth()
-  
+  const { adminUser } = useAuth();
 
   const today = new Date();
 
@@ -66,6 +71,44 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
           .required("Description is required"),
       otherwise: (schema) => schema.notRequired(),
     }),
+    // files: Yup.array().of(
+    //   Yup.mixed()
+    //     .test("fileSize", "Max 5MB", (file) =>
+    //       file ? file.size <= 10 * 1024 * 1024 : true,
+    //     )
+    //     .test("fileType", "Invalid file type", (file) =>
+    //       file
+    //         ? [
+    //             "image/jpeg",
+    //             "image/png",
+    //             "application/pdf",
+    //             "application/vnd.ms-excel",
+    //             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    //           ].includes(file.type)
+    //         : true,
+    //     ),
+    // ),
+    files: Yup.array()
+      .max(5, "Maximum 5 files allowed") // ✅ limit count
+      .of(
+        Yup.mixed()
+          .test("fileSize", "Each file must be less than 10MB", (file) =>
+            file ? file.size <= 10 * 1024 * 1024 : true,
+          )
+          .test("fileType", "Invalid file type", (file) =>
+            file
+              ? [
+                  "image/jpeg",
+                  "image/png",
+                  "application/pdf",
+                  "application/vnd.ms-excel",
+                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ].includes(file.type)
+              : true,
+          ),
+      )
+      .nullable()
+      .notRequired(),
   });
 
   const formikUser = useFormik({
@@ -83,12 +126,14 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
       geolocation: "",
       // createdBy: "",
       channel: "",
+      priority: "",
     },
 
     validationSchema: complaintSchema,
 
     onSubmit: async (values, { resetForm }) => {
       console.log(values);
+      setisAddDataLoading(true)
       const formData = new FormData();
       formData.append("customerName", values.customerName);
       formData.append("loanId", values.loanId);
@@ -99,11 +144,14 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
       formData.append("complaintCategory", values.complaintCategory);
       formData.append("complaintDescription", values.description);
       formData.append("location", values.geolocation);
+      formData.append("priority", values.priority);
       formData.append("createdBy", values.adminUser?.empId);
       // formData.append("file", values.file);
 
-      if (values.file && values.file.name) {
-        formData.append("file", values.file);
+      if (values.files && values.files.length > 0) {
+        values.files.forEach((file) => {
+          formData.append("files", file); // ✅ same key for multer.array("files")
+        });
       }
 
       try {
@@ -119,6 +167,8 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
         }
       } catch (error) {
         console.log("Error in complaint register");
+      }finally{
+        setisAddDataLoading(false)
       }
     },
   });
@@ -140,7 +190,6 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
       }
     },
   });
-
 
   //Toggle Button
   const handleLoanToggle = (value) => {
@@ -166,6 +215,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
     );
 
     formikUser.setFieldValue("description", selectedReason?.description || "");
+    formikUser.setFieldValue("priority", selectedReason?.priority || "");
   }, [formikUser.values.complaintCategory]);
 
   const ErrorMsg = ({ error, touched }) => {
@@ -242,39 +292,37 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
     }
   };
 
-  
-    // ✅ SEARCH BY LOAN ID
-    const handleSearch = async () => {
-  
-      const req = {
-        loanId: formikUser.values.loanId
-      }
-      setisLoading(true)
-      try {
-        const response = await getUserDetailsWithLoanId(req)
-        if(response.status){
-             formikUser.setValues({
+  // ✅ SEARCH BY LOAN ID
+  const handleSearch = async () => {
+    const req = {
+      loanId: formikUser.values.loanId,
+    };
+    setisLoading(true);
+    try {
+      const response = await getUserDetailsWithLoanId(req);
+      if (response.status) {
+        formikUser.setValues({
           ...formikUser.values,
           productName: response?.data?.productName,
           email: response?.data?.email,
           mobile: response?.data?.mobile,
           customerName: response?.data?.customerName,
         });
-  
+
         toast.success("Loan verified");
         setisInvalidLoan(false);
-        }else{
-          toast.info("LoanId not found!");
-          setisInvalidLoan(true);
-          formikUser.resetForm();
-        }
-      } catch (error) {
-        console.log("Error in fetchRemarksData: ", error);
-        toast.error(error.response?.data?.message || "Something went wrong!");
-      }finally{
-        setisLoading(false)
+      } else {
+        toast.info("LoanId not found!");
+        setisInvalidLoan(true);
+        // formikUser.resetForm();
       }
-    };
+    } catch (error) {
+      console.log("Error in fetchRemarksData: ", error);
+      toast.error(error.response?.data?.message || "Something went wrong!");
+    } finally {
+      setisLoading(false);
+    }
+  };
 
   useEffect(() => {
     const req = {
@@ -286,7 +334,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
 
   return (
     <section className="min-h-screen">
-      {/* <Background /> */}
+      {/* {true && <SpinnerLoader text="Submiting..." />} */}
       <div className="">
         {/* QUESTIONS */}
         <div className="bg-white shadow rounded-lg p-6 mb-2">
@@ -416,8 +464,9 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
                         <Button
                           type="button"
                           btnName="Verify"
+                          disabled={isLoading}
                           onClick={handleSearch}
-                          style="bg-primary hover:bg-primary/90 text-white px-4 py-2 cursor-pointer"
+                          style={`${isLoading ? "bg-gray-500" : "bg-primary hover:bg-primary/90"} text-white px-4 py-2 cursor-pointer`}
                         />
                       </div>
                     )}
@@ -651,7 +700,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
                   className="w-full mt-4 border border-gray-300 p-3 rounded-md text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-400"
                   placeholder="Write Your Grievance Here..."
                   value={formikUser.values.description}
-                  readOnly={formikUser.values.complaintCategory !== "OTHERS"}
+                  // readOnly={formikUser.values.complaintCategory !== "OTHERS"}
                   onChange={(e) =>
                     formikUser.setFieldValue("description", e.target.value)
                   }
@@ -662,25 +711,6 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
                   touched={formikUser.touched.description}
                 />
               </div>
-
-              {/* <div>
-                <TextInput
-                  label="response_time_in_days"
-                  name="response_time_in_days"
-                  value={formikUser.values.response_time_in_days}
-                  onChange={(e) =>
-                    formikUser.setFieldValue(
-                      "response_time_in_days",
-                      e.target.value,
-                    )
-                  }
-                  onBlur={formikUser.handleBlur}
-                />
-                <ErrorMsg
-                  error={formikUser.errors.response_time_in_days}
-                  touched={formikUser.touched.response_time_in_days}
-                />
-              </div> */}
 
               {formikUser.values.response_time_in_days &&
                 formikUser.values.complaintCategory !== "OTHERS" && (
@@ -694,7 +724,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
                   </div>
                 )}
 
-              <div className="bg-primary/10 py-10 relative flex justify-center rounded-md">
+              {/* <div className="bg-primary/10 py-10 relative flex justify-center rounded-md">
                 <input
                   name="file"
                   onChange={(e) =>
@@ -711,6 +741,64 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
                       : "Uplaod File"}
                   </p>
                 </div>
+              </div> */}
+
+              <div className="bg-primary/10 py-10 relative flex justify-center rounded-md">
+                <input
+                  name="files"
+                  type="file"
+                  multiple
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    formikUser.setFieldValue("files", files);
+                    e.target.value = null; // reset input
+                  }}
+                  className="cursor-pointer absolute inset-0 opacity-0"
+                />
+
+                <div className="flex flex-col items-center">
+                  <Icon name="FaFileUpload" color="#088395" size={25} />
+
+                  {formikUser?.values?.files?.length > 0 ? (
+                    <p className="text-gray-600 text-sm font-medium mt-5">
+                      {formikUser.values.files.length} File(s) Selected
+                    </p>
+                  ) : (
+                    <div className="text-center mt-5">
+                      <p className="text-gray-600 text-sm font-medium">
+                        Upload Supported Documents
+                      </p>
+                      <p className="text-[12px] text-red-500">
+                        Only .PDF, .PNG, .JPG, .JPEG .CSV Files Allowed
+                      </p>
+                      <p className="text-[10px] text-red-500">
+                        Only 3 Files Allowed
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-2">
+                {formikUser?.values?.files?.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center text-sm"
+                  >
+                    <span>{file.name}</span>
+                    <span
+                      className="cursor-pointer text-red-500"
+                      onClick={() => {
+                        const updated = [...formikUser.values.files];
+                        updated.splice(index, 1);
+                        formikUser.setFieldValue("files", updated);
+                      }}
+                    >
+                      ❌
+                    </span>
+                  </div>
+                ))}
               </div>
 
               {/* {formikUser.values.file && 
@@ -731,8 +819,11 @@ const ComplaintForm = ({ user, fetchData, setIsOpen }) => {
                 <div className="flex justify-center mt-5">
                   <Button
                     type="submit"
-                    btnName="Submit"
-                    style="bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-md cursor-pointer"
+                    disabled={formikUser.isSubmitting}
+                    btnName={
+                      formikUser.isSubmitting ? "Submiting..." : "Submit"
+                    }
+                    style={`${formikUser.isSubmitting ? "bg-gray-500" : "bg-primary hover:bg-primary/80"} text-white px-6 py-2 rounded-md cursor-pointer`}
                   />
                 </div>
               </div>

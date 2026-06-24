@@ -13,12 +13,14 @@ import Resolve from "../components/forms/Resolve";
 import { getActionHistory, getIndivisualComplaint } from "../api/ApiFunction";
 import { useAuth } from "../context/AuthContext";
 import ReOpen from "../components/forms/ReOpen";
+import FileUpload from "../utils/FileUpload";
 
 const TicketDetail = () => {
   const [isAssignOpen, setisAssignOpen] = useState(false);
   const [isReject, setisReject] = useState(false);
   const [isResolved, setisResolved] = useState(false);
   const [isReopen, setIsReopen] = useState(false);
+  const [isUploadOpen, setisUploadOpen] = useState(false);
   const [ticket, setTicket] = useState(null);
   const [ticketData, setTicketData] = useState({});
   const [historyData, setHistoryData] = useState([]);
@@ -26,9 +28,9 @@ const TicketDetail = () => {
   const location = useLocation();
   const ticketId = location?.state?.ticketId;
 
-  const {adminUser} = useAuth()
-  const isAdmin = adminUser?.role === "ADMIN"
-  
+  const { adminUser } = useAuth();
+  const isAdmin = adminUser?.role === "ADMIN";
+  const isActionAllowed = adminUser?.empId == ticketData?.assignedTo;
 
   // const ticketData = tableData.find((item) => item.complaintRefNo === ticketId);
 
@@ -41,7 +43,7 @@ const TicketDetail = () => {
 
       if (response.status) {
         setTicketData(response.data);
-        fetchActionHistory({ id: ticketId })
+        fetchActionHistory({ id: ticketId });
       }
     } catch (error) {
       console.log("Error in Fetching getIndivisualComplaint:", error);
@@ -76,9 +78,7 @@ const TicketDetail = () => {
       year: "numeric",
     });
 
-    const formateTime = (date) =>
-    new Date(date).toLocaleTimeString("en-IN")
-    
+  const formateTime = (date) => new Date(date).toLocaleTimeString("en-IN");
 
   const handleAssign = (data) => {
     setisAssignOpen(true);
@@ -180,14 +180,14 @@ const TicketDetail = () => {
                   {ticketData.responsibleDepartment || "N/A"}
                 </p>
               </div> */}
-              {!ticketData.closerDate && <div>
-                <p className="text-gray-400 text-xs">
-                  Assigned To
-                </p>
-                <p className="font-medium">
-                  {ticketData.assignedToName || "Not Assigned"}
-                </p>
-              </div>}
+              {!ticketData.closerDate && (
+                <div>
+                  <p className="text-gray-400 text-xs">Assigned To</p>
+                  <p className="font-medium">
+                    {ticketData.assignedToName || "Not Assigned"}
+                  </p>
+                </div>
+              )}
               {/* <div>
                 <p className="text-gray-400 text-xs">
                   Expected Resolution Date
@@ -249,6 +249,12 @@ const TicketDetail = () => {
               </p>
 
               {/* <button classa */}
+              <button
+                className="border border-primary px-5 py-1 rounded-full text-primary font-semibold text-xs cursor-pointer"
+                onClick={() => setisUploadOpen(true)}
+              >
+                Upload
+              </button>
             </div>
 
             {ticketData.file && ticketData.file.length > 0 ? (
@@ -346,7 +352,8 @@ const TicketDetail = () => {
                         {item.type}
                       </p>
                       <p className="text-xs text-gray-400">
-                        {formatDate(item.createdAt)} • {formateTime(item.createdAt)}
+                        {formatDate(item.createdAt)} •{" "}
+                        {formateTime(item.createdAt)}
                       </p>
                     </div>
 
@@ -359,7 +366,8 @@ const TicketDetail = () => {
                     )}
 
                     <p className="text-[11px] text-gray-400 mt-2">
-                      By {item.createdByName} {item.createdFor && `→ ${item.createdForName}`}
+                      By {item.createdByName}{" "}
+                      {item.createdFor && `→ ${item.createdForName}`}
                     </p>
                   </div>
                 </div>
@@ -383,7 +391,7 @@ const TicketDetail = () => {
             <p className="text-sm font-semibold text-primary mb-4">Actions</p>
 
             <div className="space-y-2">
-              {!ticketData.closerDate && (
+              {!ticketData.closerDate && (isActionAllowed || isAdmin) && (
                 <>
                   <button
                     onClick={() => handleResolved(ticketData)}
@@ -392,12 +400,12 @@ const TicketDetail = () => {
                     Mark as Resolved
                   </button>
 
-                  <button
+                  {/* <button
                     onClick={() => handleReject(ticketData)}
                     className="w-full py-2 rounded bg-red-500 text-gray-100 text-sm hover:bg-red-400 cursor-pointer"
                   >
                     Reject Ticket
-                  </button>
+                  </button> */}
                   <button
                     onClick={() => handleAssign(ticketData)}
                     className="w-full py-2 rounded bg-gray-200 text-gray-700 text-sm hover:bg-gray-300/80 cursor-pointer"
@@ -416,7 +424,9 @@ const TicketDetail = () => {
                 </button>
               )}
 
-              {ticketData.closerDate && !isAdmin && <p className="text-sm text-gray-400">Actions Not Allowed</p>}
+              {ticketData.closerDate && !isAdmin && (
+                <p className="text-sm text-gray-400">Actions Not Allowed</p>
+              )}
             </div>
           </div>
         </div>
@@ -425,7 +435,7 @@ const TicketDetail = () => {
       <Modal
         isOpen={isAssignOpen}
         onClose={() => setisAssignOpen(false)}
-        title="Escalate Complaint"
+        title="Assign Complaint"
       >
         <Escalate
           isAssignOpen={isAssignOpen}
@@ -466,7 +476,26 @@ const TicketDetail = () => {
         onClose={() => setIsReopen(false)}
         title="ReOpen Ticket"
       >
-        <ReOpen setisReOpen={setIsReopen} isReOpen={isReopen} ticket={ticket} fetchData={fetchData} />
+        <ReOpen
+          setisReOpen={setIsReopen}
+          isReOpen={isReopen}
+          ticket={ticket}
+          fetchData={fetchData}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={isUploadOpen}
+        onClose={() => setisUploadOpen(false)}
+        title="Upload Files"
+      >
+        <FileUpload
+          complaintRefNo={ticketData?.complaintRefNo}
+          ticketId={ticketId}
+          setisUploadOpen={setisUploadOpen}
+          fetchData={fetchData}
+          fetchActionHistory={fetchActionHistory}
+        />
       </Modal>
     </div>
   );

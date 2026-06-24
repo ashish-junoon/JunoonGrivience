@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Table from "../components/Table";
-import { tableData } from "../assets/data";
+import { priorityStyles, tableData } from "../assets/data";
 import Button from "../utils/Button";
 import Modal from "../utils/Modal";
 import ComplaintForm from "../components/forms/ComplaintForm";
@@ -24,7 +24,7 @@ const PendingTickets = () => {
   const [isReject, setisReject] = useState(false);
   const [ticket, setTicket] = useState(null);
   const [Tickets, setTickets] = useState([]);
-  const [csvData, setcsvData] = useState([])
+  const [csvData, setcsvData] = useState([]);
   const navigate = useNavigate();
 
   const { adminUser } = useAuth();
@@ -78,6 +78,20 @@ const PendingTickets = () => {
       name: "product",
       selector: (row) => row.productName,
     },
+    {
+      name: "Priority",
+      selector: (row) => row.priority,
+      sortable: true,
+      cell: (row) => {
+        return (
+          <span
+            className={`px-2 py-0.5 rounded text-[10px] ${priorityStyles[row.priority]}`}
+          >
+            {row.priority}
+          </span>
+        );
+      },
+    },
     adminUser?.role && {
       name: "assigned To",
       selector: (row) => row.assignedToName,
@@ -111,7 +125,7 @@ const PendingTickets = () => {
           <span
             onClick={() =>
               navigate("/tickets/ticket-detail", {
-                state: { ticketId: row.complaintRefNo , isOpen: true},
+                state: { ticketId: row.complaintRefNo, isOpen: true },
               })
             }
           >
@@ -134,21 +148,21 @@ const PendingTickets = () => {
     //     );
     //   },
     // },
-    {
-      name: "Reject",
-      cell: (row) => {
-        return (
-          <span
-            onClick={() => handleReject(row)}
-            // className="text-red-500 bg-red-500/20 shadow-2xl font-bold text-[10px] border border-red-500 px-2 py-1 rounded-sm italic"
-            className="text-red-500 shadow-2xl font-bold text-[10px]"
-          >
-            {/* Assign */}
-            <Icon name="MdOutlineDeleteSweep" size={20} />
-          </span>
-        );
-      },
-    },
+    // {
+    //   name: "Reject",
+    //   cell: (row) => {
+    //     return (
+    //       <span
+    //         onClick={() => handleReject(row)}
+    //         // className="text-red-500 bg-red-500/20 shadow-2xl font-bold text-[10px] border border-red-500 px-2 py-1 rounded-sm italic"
+    //         className="text-red-500 shadow-2xl font-bold text-[10px]"
+    //       >
+    //         {/* Assign */}
+    //         <Icon name="MdOutlineDeleteSweep" size={20} />
+    //       </span>
+    //     );
+    //   },
+    // },
   ];
 
   const fetchData = async () => {
@@ -167,24 +181,24 @@ const PendingTickets = () => {
 
   useEffect(() => {
     if (!Tickets || Tickets.length === 0) return;
-  
+
     const ExportableData = Tickets.map((data) => ({
       "Complaint Id": data?.complaintRefNo,
       "Customer Name": data?.customerName,
       "Loan Id": data?.loanId || "N/A",
-      "Mobile": data?.mobile,
-      "Email": data?.email,
+      Mobile: data?.mobile,
+      Email: data?.email,
       "Product Name": data?.productName,
       "Complaint Category": data?.complaintCategory,
       "Complaint Description": data?.complaintDescription,
       "Created By": data?.createdByName,
-      "Status": data?.status,
+      Status: data?.status,
       "Assigned To": data?.assignedToName || "N/A",
       // "Closed By": data?.closedByName || "-",
       "ReOpen By": data?.reOpenByName || "-",
       "Created At": data?.createdAt,
     }));
-  
+
     setcsvData(ExportableData);
   }, [Tickets]);
 

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { RiArrowDownSLine, RiCloseLine } from "react-icons/ri";
 import { NavLink, useLocation } from "react-router-dom";
 import { RiDashboardLine, RiUser3Line, RiSettings3Line } from "react-icons/ri";
-import { IoBookmarksOutline, IoTicketOutline } from "react-icons/io5";
+import { IoBookmarksOutline, IoTicketOutline, IoMailOpenOutline } from "react-icons/io5";
+
 
 import { MdHistory } from "react-icons/md";
 import { useAuth } from "../context/AuthContext";
@@ -25,6 +26,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
           icon: RiUser3Line,
           children: [
             { title: "Manage Ticket", path: "/tickets/manage-tickets" },
+            { title: "InProcess Ticket", path: "/tickets/inprocess-tickets" },
             { title: "History", path: "/tickets/tickets-history" },
           ],
         },
@@ -54,34 +56,12 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
           icon: IoBookmarksOutline,
           children: [{ title: "Manage Query", path: "/query/manage-query" }],
         },
+        {
+          title: "Mail Management",
+          path: "/mail-management",
+          icon: IoMailOpenOutline,
+        },
       ];
-
-  // const sidebarData = [
-  //   {
-  //     title: "Dashboard",
-  //     path: "/dashboard",
-  //     icon: RiDashboardLine,
-  //   },
-  //   {
-  //     title: "Tickets",
-  //     icon: IoTicketOutline,
-  //     children: [
-  //       { title: "Manage Ticket", path: "/tickets/manage-tickets" },
-  //       { title: "InProcess Ticket", path: "/tickets/inprocess-tickets" },
-  //       { title: "History", path: "/tickets/tickets-history" },
-  //     ],
-  //   },
-  //   {
-  //     title: "User Master",
-  //     icon: RiUser3Line,
-  //     children: [{ title: "Manage User", path: "/user/manage-user" }],
-  //   },
-  //   {
-  //     title: "Remarks Master",
-  //     icon: IoBookmarksOutline,
-  //     children: [{ title: "Manage Remark", path: "/remark/manage-remark" }],
-  //   }
-  // ];
 
   const toggleMenu = (index) => {
     setOpenMenus((prev) => ({
@@ -112,9 +92,10 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
       >
         {/* Header */}
         <div className="flex justify-between items-center px-5 py-4 border-b border-gray-800">
-          <h1 className="text-xl font-bold text-white tracking-wide">
+          <h1 className="text-md font-semibold text-white tracking-wide">
             {/* Admin Panel */}
-            <span className="text-primary">Grievance</span> Portal
+            {/* <span className="text-primary">Grievance</span> Portal */}
+            <span className="text-primary">Grievance Redressal</span> Portal
           </h1>
 
           <button

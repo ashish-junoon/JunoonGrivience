@@ -4,17 +4,20 @@ import Button from "../../utils/Button";
 import { useFormik } from "formik";
 import { toast } from "react-toastify";
 import SelectInput from "../fields/SelectInput";
-import { getRemarksByType, rejectComplaint, reOpenComplaint } from "../../api/ApiFunction";
+import {
+  getRemarksByType,
+  rejectComplaint,
+  reOpenComplaint,
+} from "../../api/ApiFunction";
 import * as Yup from "yup";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import SpinnerLoader from "../../utils/SpinnerLoader/SpinnerLoader";
 
 const ReOpen = ({ setisReOpen, ticket, fetchData, isReOpen }) => {
-
-  const [RemarksData ,setRemarksData] = useState([])
-  const {adminUser} = useAuth()
-  const navigate = useNavigate()
-  
+  const [RemarksData, setRemarksData] = useState([]);
+  const { adminUser } = useAuth();
+  const navigate = useNavigate();
 
   const formik = useFormik({
     initialValues: {
@@ -41,8 +44,9 @@ const ReOpen = ({ setisReOpen, ticket, fetchData, isReOpen }) => {
       const req = {
         remarks: values.remarks,
         description: values.description,
-        empId: adminUser?.empId,
+        empId: adminUser?.empId || "USER",
         id: ticket?._id,
+        complaintRefNo: ticket?._complaintRefNo,
       };
 
       console.log(req);
@@ -52,20 +56,26 @@ const ReOpen = ({ setisReOpen, ticket, fetchData, isReOpen }) => {
         if (response.status) {
           setisReOpen(false);
           toast.success(response.message || "Complait reOpen");
-          fetchData(ticket?.complaintRefNo);
+          {fetchData && fetchData(ticket?.complaintRefNo)}
           resetForm();
-          if(location.pathname === "/tickets/ticket-detail"){
-            navigate(-1)
+          if (location.pathname === "/tickets/ticket-detail") {
+            navigate(-1);
           }
         } else {
           toast.info(response.message || "Error in reOpening complaint!");
         }
       } catch (error) {
         console.log("Error in reOpening", error.response?.data?.message);
-        toast.error(error.response?.data?.message || "Something went wrong!")
+        console.log("Error in reOpening", error);
+        toast.error(error.response?.data?.message || "Something went wrong!");
       }
     },
   });
+
+  const ErrorMsg = ({ error, touched }) => {
+    if (!touched || !error) return null;
+    return <p className="text-red-500 text-xs">{error}</p>;
+  };
 
   useEffect(() => {
     const selected = RemarksData.find(
@@ -81,35 +91,34 @@ const ReOpen = ({ setisReOpen, ticket, fetchData, isReOpen }) => {
     }
   }, [formik.values.remarks]);
 
-    const fetchRemarksData = async (req) => {
-      
-      try {
-        const response = await getRemarksByType(req)
-        if(response.status){
-          setRemarksData(response.data)
-        }else{
-          setRemarksData([])
-        }
-      } catch (error) {
-        console.log("Error in fetchRemarksData: ", error);
-        toast.error(error.response?.data?.message || "Something went wrong!");
+  const fetchRemarksData = async (req) => {
+    try {
+      const response = await getRemarksByType(req);
+      if (response.status) {
+        setRemarksData(response.data);
+      } else {
+        setRemarksData([]);
       }
+    } catch (error) {
+      console.log("Error in fetchRemarksData: ", error);
+      toast.error(error.response?.data?.message || "Something went wrong!");
     }
-    useEffect(()=> {
-      if(!isReOpen) return
+  };
+  useEffect(() => {
+    if (!isReOpen) return;
 
-      const req = {
-        type: "REOPEN"
-      }
-  
-      fetchRemarksData(req)
-    }, [ticket, isReOpen])
+    const req = {
+      type: "REOPEN",
+    };
+
+    fetchRemarksData(req);
+  }, [ticket, isReOpen]);
 
   return (
     <form onSubmit={formik.handleSubmit}>
       <div className="p-2">
         <div className="pb-2">
-          <p>Are you sure you want to Reject this complaint?</p>
+          <p>Are you sure you want to ReOpen this complaint?</p>
         </div>
 
         <div className="grid grid-cols-1 gap-2">
@@ -122,6 +131,10 @@ const ReOpen = ({ setisReOpen, ticket, fetchData, isReOpen }) => {
               value={formik.values.remarks}
               onBlur={formik.handleBlur}
               onChange={formik.handleChange}
+            />
+            <ErrorMsg
+              error={formik.errors.remarks}
+              touched={formik.touched.remarks}
             />
           </div>
 
@@ -139,6 +152,10 @@ const ReOpen = ({ setisReOpen, ticket, fetchData, isReOpen }) => {
                 formik.setFieldValue("description", e.target.value)
               }
             />
+            <ErrorMsg
+              error={formik.errors.description}
+              touched={formik.touched.description}
+            />
           </div>
           {/* )} */}
         </div>
@@ -152,7 +169,7 @@ const ReOpen = ({ setisReOpen, ticket, fetchData, isReOpen }) => {
         />
         <Button
           type="submit"
-          btnName="Yes"
+          btnName={formik.isSubmitting ? <SpinnerLoader /> : "ReOpen"}
           disabled={formik.isSubmitting}
           style={`${!formik.isSubmitting ? "cursor-pointer bg-primary" : "cursor-not-allowed bg-gray-500"} hover:bg-primary/80 text-white`}
         />

@@ -19,7 +19,7 @@ api.interceptors.response.use(
       localStorage.removeItem("adminUser");
 
       // ✅ Redirect to login
-      window.location.href = "/login";
+      window.location.href = "/admin/login";
     }
 
     return Promise.reject(error);
@@ -57,6 +57,25 @@ export const createComplaint = async (req) => {
     const response = await api.post("/complaint/createComplaint", req, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+    return response.data; // Return the API response data
+  } catch (error) {
+    console.error(
+      "Create Complaint error:",
+      error.response?.data || error.message,
+    );
+    throw error; // Rethrow error to handle it in the calling function
+  }
+};
+
+export const uploadComplaintFiles = async ({ req, complaintRefNo }) => {
+  try {
+    const response = await api.post(
+      `/complaint/uploadComplaintFiles/${complaintRefNo}`,
+      req,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
     return response.data; // Return the API response data
   } catch (error) {
     console.error(
@@ -281,7 +300,6 @@ export const getActionHistory = async (req) => {
   }
 };
 
-
 // getUserDetailsWithLoanId
 export const getUserDetailsWithLoanId = async (req) => {
   try {
@@ -295,8 +313,6 @@ export const getUserDetailsWithLoanId = async (req) => {
     throw error; // Rethrow error to handle it in the calling function
   }
 };
-
-
 
 // To Registere User
 export const createUsers = async (req) => {
@@ -368,6 +384,40 @@ export const getRemarksByType = async (req) => {
 export const removeRemark = async (req) => {
   try {
     const response = await api.delete(`/master/removeRemark/${req}`);
+    return response.data; // Return the API response data
+  } catch (error) {
+    console.error("Create User error:", error.response?.data || error.message);
+    throw error; // Rethrow error to handle it in the calling function
+  }
+};
+
+// ?================================================>
+// !===================================================>
+// * MAIL BOX API'S =======================================>
+// !===================================================>
+// ?================================================>
+
+
+// ? To Get inBox Mails
+// * =========================
+
+export const getInboxMail = async (req) => {
+  try {
+    const response = await api.get("/mail/getInbox");
+    return response.data; // Return the API response data
+  } catch (error) {
+    console.error("Create User error:", error.response?.data || error.message);
+    throw error; // Rethrow error to handle it in the calling function
+  }
+};
+
+
+// ? To Get Threads Of Mail Mails
+// * =========================
+
+export const getThreadMail = async (threadId) => {
+  try {
+    const response = await api.get(`/mail/getThread/${threadId}`);
     return response.data; // Return the API response data
   } catch (error) {
     console.error("Create User error:", error.response?.data || error.message);

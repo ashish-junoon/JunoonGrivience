@@ -11,12 +11,17 @@ import {
   getUsersByProduct,
 } from "../../api/ApiFunction";
 import { useNavigate } from "react-router-dom";
+import * as Yup from "yup";
+import SpinnerLoader from "../../utils/SpinnerLoader/SpinnerLoader";
 
 const Escalate = ({ setisAssignOpen, ticket, isAssignOpen, fetchData }) => {
   const [usersList, setUsersList] = useState([]);
   const [RemarksData, setRemarksData] = useState([]);
   const { adminUser } = useAuth();
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+
+  console.log(ticket?.complaintRefNo);
+  
 
   const formik = useFormik({
     initialValues: {
@@ -26,7 +31,11 @@ const Escalate = ({ setisAssignOpen, ticket, isAssignOpen, fetchData }) => {
       empId: "",
       id: "",
     },
-    // adminUser?.empId
+    validationSchema: Yup.object({
+      remarks: Yup.string().required().min(3).max(100),
+      description: Yup.string().required(),
+      escalatedTo: Yup.string().required(),
+    }),
     onSubmit: async (values, { resetForm }) => {
       try {
         const req = {
@@ -35,8 +44,9 @@ const Escalate = ({ setisAssignOpen, ticket, isAssignOpen, fetchData }) => {
           escalatedTo: values.escalatedTo,
           empId: adminUser?.empId,
           id: ticket?._id,
+          complaintRefNo: ticket?.complaintRefNo,
         };
-        // console.log(req);
+        console.log(req);
 
         const response = await escalateComplaint(req);
         if (response.status) {
@@ -44,8 +54,8 @@ const Escalate = ({ setisAssignOpen, ticket, isAssignOpen, fetchData }) => {
           setisAssignOpen(false);
           resetForm();
           fetchData();
-          if(location.pathname === "/tickets/ticket-detail"){
-            navigate(-1)
+          if (location.pathname === "/tickets/ticket-detail") {
+            navigate(-1);
           }
         } else {
           toast.info(response.info || "Unable to Escalate Complaint!");
@@ -56,6 +66,11 @@ const Escalate = ({ setisAssignOpen, ticket, isAssignOpen, fetchData }) => {
       }
     },
   });
+
+  const ErrorMsg = ({ error, touched }) => {
+    if (!touched || !error) return null;
+    return <p className="text-red-500 text-xs">{error}</p>;
+  };
 
   const fetchRemarksData = async (req) => {
     try {
@@ -122,13 +137,17 @@ const Escalate = ({ setisAssignOpen, ticket, isAssignOpen, fetchData }) => {
         <div className="grid grid-cols-2 gap-2 pb-5">
           <div>
             <SelectInput
-              label="Escalate to"
+              label="Assign To"
               placeholder="Select"
               name="escalatedTo"
               onBlur={formik.handleBlur}
               onChange={formik.handleChange}
               value={formik.values.escalatedTo}
               options={usersList}
+            />
+            <ErrorMsg
+              error={formik.errors.escalatedTo}
+              touched={formik.touched.escalatedTo}
             />
           </div>
 
@@ -141,6 +160,10 @@ const Escalate = ({ setisAssignOpen, ticket, isAssignOpen, fetchData }) => {
               value={formik.values.remarks}
               onBlur={formik.handleBlur}
               onChange={formik.handleChange}
+            />
+            <ErrorMsg
+              error={formik.errors.remarks}
+              touched={formik.touched.remarks}
             />
           </div>
 
@@ -157,6 +180,10 @@ const Escalate = ({ setisAssignOpen, ticket, isAssignOpen, fetchData }) => {
                 formik.setFieldValue("description", e.target.value)
               }
             />
+            <ErrorMsg
+              error={formik.errors.description}
+              touched={formik.touched.description}
+            />
           </div>
         </div>
       </div>
@@ -171,7 +198,7 @@ const Escalate = ({ setisAssignOpen, ticket, isAssignOpen, fetchData }) => {
         />
         <Button
           type="submit"
-          btnName="Yes"
+          btnName={formik.isSubmitting ? <SpinnerLoader /> : "Assign"}
           disabled={formik.isSubmitting}
           style={`${!formik.isSubmitting ? "cursor-pointer bg-primary" : "cursor-not-allowed bg-gray-500"} hover:bg-primary/80 text-white`}
         />

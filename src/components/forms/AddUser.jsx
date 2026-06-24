@@ -20,7 +20,10 @@ const AddUser = ({ userData, setIsOpen, fetchData }) => {
       product: "",
     },
     validationSchema: Yup.object({
-      name: Yup.string().required("Name is required"),
+      name: Yup.string()
+        .matches(/^[A-Za-z\s]+$/, "Only alphabets are allowed")
+        .required("Name is required"),
+
       email: Yup.string()
         .email("Invalid email format")
         .required("Email is required"),
@@ -33,14 +36,14 @@ const AddUser = ({ userData, setIsOpen, fetchData }) => {
       }),
     }),
     onSubmit: async (values) => {
-      
       const req = {
         name: values.name,
         level: values.level,
         email: values.email,
         mobile: values.mobile,
-        product: values.level == "3" ? "" : values.product,
-        empId: userData?.empId || ""
+        // product: values.level == "3" ? "" : values.product,
+        product: values.product,
+        empId: userData?.empId || "",
       };
 
       try {
@@ -152,7 +155,7 @@ const AddUser = ({ userData, setIsOpen, fetchData }) => {
             )}
           </div> */}
 
-          {userformik.values.level != "3" && (
+          {/* {userformik.values.level != "3" && ( */}
             <div>
               <SelectInput
                 name="product"
@@ -169,7 +172,7 @@ const AddUser = ({ userData, setIsOpen, fetchData }) => {
                 </p>
               )}
             </div>
-          )}
+          {/* )} */}
         </div>
 
         <div className="flex items-center gap-2 justify-end mt-5">

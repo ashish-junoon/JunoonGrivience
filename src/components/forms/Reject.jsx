@@ -44,9 +44,8 @@ const Reject = ({ setisReject, ticket, fetchData, isReject }) => {
         description: values.description,
         empId: adminUser?.empId,
         id: ticket?._id,
+        complaintRefNo: ticket?._complaintRefNo,
       };
-
-      console.log(req);
 
       try {
         const response = await rejectComplaint(req);
@@ -67,6 +66,11 @@ const Reject = ({ setisReject, ticket, fetchData, isReject }) => {
       }
     },
   });
+
+  const ErrorMsg = ({ error, touched }) => {
+    if (!touched || !error) return null;
+    return <p className="text-red-500 text-xs">{error}</p>;
+  };
 
   useEffect(() => {
     const selected = RemarksData.find(
@@ -124,6 +128,10 @@ const Reject = ({ setisReject, ticket, fetchData, isReject }) => {
               onBlur={formik.handleBlur}
               onChange={formik.handleChange}
             />
+            <ErrorMsg
+                      error={formik.errors.remarks}
+                      touched={formik.touched.remarks}
+                    />
           </div>
 
           {/* {formik.values.remarks === "OTHERS" && ( */}
@@ -140,6 +148,10 @@ const Reject = ({ setisReject, ticket, fetchData, isReject }) => {
                 formik.setFieldValue("description", e.target.value)
               }
             />
+            <ErrorMsg
+                      error={formik.errors.description}
+                      touched={formik.touched.description}
+                    />
           </div>
           {/* )} */}
         </div>

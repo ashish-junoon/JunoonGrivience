@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Table from "../components/Table";
-import { RemarksData, tableData } from "../assets/data";
+import { priorityStyles, RemarksData, tableData } from "../assets/data";
 import Icon from "../utils/Icons";
 import { useNavigate } from "react-router-dom";
 import Modal from "../utils/Modal";
@@ -88,6 +88,20 @@ const TicketHistory = () => {
       selector: (row) => row.closerDate,
     },
     {
+      name: "Priority",
+      selector: (row) => row.priority,
+      sortable: true,
+      cell: (row) => {
+        return (
+          <span
+            className={`px-2 py-0.5 rounded text-[10px] ${priorityStyles[row.priority]}`}
+          >
+            {row.priority}
+          </span>
+        );
+      },
+    },
+    {
       name: "Closed By",
       sortable: true,
       selector: (row) => row.closedByName || "---",
@@ -145,7 +159,7 @@ const TicketHistory = () => {
       "Complaint Category": data?.complaintCategory,
       "Complaint Description": data?.complaintDescription,
       "Created By": data?.createdByName,
-      "Status": data?.status,
+      Status: data?.status,
       // "Assigned To": data?.assignedToName || "N/A",
       "Closed By": data?.closedByName || "-",
       // "ReOpen By": data?.reOpenByName || "-",

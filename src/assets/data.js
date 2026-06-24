@@ -189,7 +189,7 @@ export const products = [
   { label: "Early Wages", value: "EW" },
   { label: "Refyne", value: "RF" },
   { label: "Insta Paisa", value: "IP" },
-  // { label: "Others", value: "Others" },
+  { label: "Others", value: "OTHERS" },
 ];
 
 export const channels = [
@@ -199,6 +199,26 @@ export const channels = [
   { label: "Branch", value: "branch" },
   { label: "Post", value: "post" },
 ];
+
+export const TYPES = [
+  { label: "Complaint", value: "COMPLAINT" },
+  { label: "Escalation", value: "ESCALATION" },
+  { label: "Reject", value: "REJECT" },
+  { label: "Resolve", value: "RESOLVE" },
+  { label: "ReOpen", value: "REOPEN" },
+];
+
+export const PRIORITY = [
+  { label: "LOW", value: "LOW" },
+  { label: "MEDIUM", value: "MED" },
+  { label: "HIGH", value: "HIGH" },
+];
+
+export const priorityStyles = {
+  LOW: "bg-green-100 text-green-700",
+  MED: "bg-yellow-100 text-yellow-700",
+  HIGH: "bg-red-100 text-red-700",
+};
 
 export const complaintRemarks = [
   {

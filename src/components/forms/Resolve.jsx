@@ -10,13 +10,14 @@ import { getRemarksByType, resolveComplaint } from "../../api/ApiFunction";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
 import { href, useNavigate } from "react-router-dom";
+import SpinnerLoader from "../../utils/SpinnerLoader/SpinnerLoader";
 
 const Resolve = ({ setisResolved, ticket, fetchData, isResolved }) => {
   const [RemarksData, setRemarksData] = useState([]);
 
   // console.log(ticket);
   const { adminUser } = useAuth();
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const formik = useFormik({
     initialValues: {
@@ -43,6 +44,7 @@ const Resolve = ({ setisResolved, ticket, fetchData, isResolved }) => {
       formData.append("description", values.description);
       formData.append("empId", adminUser?.empId);
       formData.append("id", ticket?._id);
+      formData.append("complaintRefNo", ticket?.complaintRefNo);
 
       if (values.file && values.file.name) {
         formData.append("file", values.file);
@@ -55,8 +57,8 @@ const Resolve = ({ setisResolved, ticket, fetchData, isResolved }) => {
           fetchData(ticket?.complaintRefNo);
           resetForm();
           setisResolved(false);
-          if(location.pathname === "/tickets/ticket-detail"){
-            navigate(-1)
+          if (location.pathname === "/tickets/ticket-detail") {
+            navigate(-1);
           }
         } else {
           toast.info(response.message || "Error in rejecting complaint!");
@@ -95,8 +97,14 @@ const Resolve = ({ setisResolved, ticket, fetchData, isResolved }) => {
       toast.error(error.response?.data?.message || "Something went wrong!");
     }
   };
+
+  const ErrorMsg = ({ error, touched }) => {
+    if (!touched || !error) return null;
+    return <p className="text-red-500 text-xs">{error}</p>;
+  };
+
   useEffect(() => {
-    if(!isResolved) return;
+    if (!isResolved) return;
 
     const req = {
       type: "RESOLVE",
@@ -104,7 +112,6 @@ const Resolve = ({ setisResolved, ticket, fetchData, isResolved }) => {
 
     fetchRemarksData(req);
   }, [ticket, isResolved]);
-  
 
   return (
     <form onSubmit={formik.handleSubmit}>
@@ -120,6 +127,10 @@ const Resolve = ({ setisResolved, ticket, fetchData, isResolved }) => {
               onBlur={formik.handleBlur}
               onChange={formik.handleChange}
             />
+            <ErrorMsg
+              error={formik.errors.remarks}
+              touched={formik.touched.remarks}
+            />
           </div>
 
           <div>
@@ -131,6 +142,10 @@ const Resolve = ({ setisResolved, ticket, fetchData, isResolved }) => {
               name="file"
               value={formik.values.file}
               onBlur={formik.handleBlur}
+            />
+            <ErrorMsg
+              error={formik.errors.file}
+              touched={formik.touched.file}
             />
           </div>
 
@@ -147,6 +162,10 @@ const Resolve = ({ setisResolved, ticket, fetchData, isResolved }) => {
                 formik.setFieldValue("description", e.target.value)
               }
             />
+            <ErrorMsg
+              error={formik.errors.description}
+              touched={formik.touched.description}
+            />
           </div>
         </div>
       </div>
@@ -160,7 +179,7 @@ const Resolve = ({ setisResolved, ticket, fetchData, isResolved }) => {
         />
         <Button
           type="submit"
-          btnName="Yes"
+          btnName={formik.isSubmitting ? <SpinnerLoader /> : "Resolve"}
           disabled={formik.isSubmitting}
           style={`${!formik.isSubmitting ? "cursor-pointer bg-primary" : "cursor-not-allowed bg-gray-500"} hover:bg-primary/80 text-white`}
         />

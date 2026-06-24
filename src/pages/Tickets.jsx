@@ -16,6 +16,8 @@ import Escalate from "../components/forms/Escalate";
 import Reject from "../components/forms/Reject";
 import { getComplaints } from "../api/ApiFunction";
 import { useAuth } from "../context/AuthContext";
+import { priorityStyles } from "../assets/data";
+import Typewriter from "../utils/TypeWriterLoader.jsx/Typewriter";
 
 const Tickets = () => {
   const [open, setOpen] = useState(false);
@@ -25,6 +27,7 @@ const Tickets = () => {
   const [ticket, setTicket] = useState(null);
   const [Tickets, setTickets] = useState([])
   const [csvData, setcsvData] = useState([])
+    const [isAddDataLoading, setisAddDataLoading] = useState(false);
 
   const navigate = useNavigate();
   const {adminUser} = useAuth()  
@@ -102,6 +105,20 @@ const Tickets = () => {
       selector: (row) => row.productName,
     },
     {
+      name: "Priority",
+      selector: (row) => row.priority,
+      sortable: true,
+      cell: (row) => {
+        return (
+          <span
+            className={`px-2 py-0.5 rounded text-[10px] ${priorityStyles[row.priority]}`}
+          >
+            {row.priority}
+          </span>
+        );
+      },
+    },
+    {
       name: "Created Date",
       sortable: true,
       selector: (row) => row.reOpenDate || row.createdAt,
@@ -110,6 +127,11 @@ const Tickets = () => {
       name: "Created By",
       sortable: true,
       selector: (row) => row.createdByName,
+    },
+    {
+      name: "Assigned To",
+      sortable: true,
+      selector: (row) => row.assignedToName,
     },
     {
       name: "Status",
@@ -153,21 +175,21 @@ const Tickets = () => {
         );
       },
     },
-    {
-      name: "Reject",
-      cell: (row) => {
-        return (
-          <span
-            onClick={() => handleReject(row)}
-            // className="text-red-500 bg-red-500/20 shadow-2xl font-bold text-[10px] border border-red-500 px-2 py-1 rounded-sm italic"
-            className="text-red-500 shadow-2xl font-bold text-[10px]"
-          >
-            {/* Assign */}
-            <Icon name="MdOutlineDeleteSweep" size={20} />
-          </span>
-        );
-      },
-    },
+    // {
+    //   name: "Reject",
+    //   cell: (row) => {
+    //     return (
+    //       <span
+    //         onClick={() => handleReject(row)}
+    //         // className="text-red-500 bg-red-500/20 shadow-2xl font-bold text-[10px] border border-red-500 px-2 py-1 rounded-sm italic"
+    //         className="text-red-500 shadow-2xl font-bold text-[10px]"
+    //       >
+    //         {/* Assign */}
+    //         <Icon name="MdOutlineDeleteSweep" size={20} />
+    //       </span>
+    //     );
+    //   },
+    // },
   ];
 
 useEffect(() => {
@@ -197,6 +219,7 @@ useEffect(() => {
 
   return (
     <>
+      {isAddDataLoading && <Typewriter text="Submiting..."/>}
       <section>
         {isAdmin && <div className="mb-2 flex justify-end gap-2">
           <Button
@@ -230,14 +253,14 @@ useEffect(() => {
           title="Add Ticket"
         >
           <div className="bg-gray-100/50 p-4 rounded-md">
-            <AddComplaint fetchData={fetchData} setIsOpen={setIsOpen} />
+            <AddComplaint fetchData={fetchData} setIsOpen={setIsOpen} setisAddDataLoading={setisAddDataLoading} />
           </div>
         </Modal>
 
         <Modal
           isOpen={isAssignOpen}
           onClose={() => setisAssignOpen(false)}
-          title="Escalate Complaint"
+          title="Assign Complaint"
         >
           <Escalate setisAssignOpen={setisAssignOpen} ticket={ticket} isAssignOpen={isAssignOpen} fetchData={fetchData} />
         </Modal>
