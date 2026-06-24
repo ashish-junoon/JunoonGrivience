@@ -56,11 +56,11 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
           icon: IoBookmarksOutline,
           children: [{ title: "Manage Query", path: "/query/manage-query" }],
         },
-        {
-          title: "Mail Management",
-          path: "/mail-management",
-          icon: IoMailOpenOutline,
-        },
+        // {
+        //   title: "Mail Management",
+        //   path: "/mail-management",
+        //   icon: IoMailOpenOutline,
+        // },
       ];
 
   const toggleMenu = (index) => {
