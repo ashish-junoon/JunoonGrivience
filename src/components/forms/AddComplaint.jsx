@@ -39,19 +39,24 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
       otherwise: (schema) => schema.notRequired(),
     }),
 
-    customerName: Yup.string().when("hasLoan", {
-      is: "NO",
-      then: (schema) =>
-        schema
-          .matches(/^[A-Za-z ]+$/, "Only alphabets allowed")
-          .required("First name is required"),
-    }),
+    // customerName: Yup.string().when("hasLoan", {
+    //   is: "NO",
+    //   then: (schema) =>
+    //     schema
+    //       .matches(/^[A-Za-z ]+$/, "Only alphabets allowed")
+    //       .required("First name is required"),
+    // }),
 
+    
     // lastName: Yup.string().when("hasLoan", {
     //   is: "NO",
     //   then: (schema) =>
     //     schema.matches(/^[A-Za-z ]+$/, "Only alphabets allowed"),
     // }),
+
+    customerName: Yup.string()
+          .matches(/^[A-Za-z ]+$/, "Only alphabets allowed")
+          .required("First name is required"),
 
     mobile: Yup.string()
       .matches(/^[6-9]\d{9}$/, "Enter valid mobile number")
@@ -60,7 +65,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
     email: Yup.string().email("Invalid email").required("Email is required"),
 
     complaintCategory: Yup.string().required("Please select a reason"),
-    geolocation: Yup.string().required("Geolocation is Required!"),
+    geolocation: Yup.string().required("Geolocation is Required!").min(3),
     productName: Yup.string().required(),
     channel: Yup.string().required(),
     description: Yup.string().when("complaintCategory", {
@@ -145,7 +150,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
       formData.append("complaintDescription", values.description);
       formData.append("location", values.geolocation);
       formData.append("priority", values.priority);
-      formData.append("createdBy", values.adminUser?.empId);
+      formData.append("createdBy", adminUser?.empId);
       // formData.append("file", values.file);
 
       if (values.files && values.files.length > 0) {
@@ -166,12 +171,17 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
           toast.info(response.message || "Complaint not registered");
         }
       } catch (error) {
+        toast.info(error.response?.data?.message || "Something went wrong!");
         console.log("Error in complaint register");
       }finally{
         setisAddDataLoading(false)
       }
     },
   });
+
+  console.log(formikUser.errors);
+  console.log(formikUser.values);
+  
 
   const formikRefference = useFormik({
     initialValues: {
@@ -194,8 +204,8 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
   //Toggle Button
   const handleLoanToggle = (value) => {
     setHasLoan(value);
-    formikUser.setFieldValue("hasLoan", value);
     formikUser.resetForm();
+    formikUser.setFieldValue("hasLoan", value);
   };
 
   const handleisAppliedToggle = (value) => {
@@ -207,6 +217,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
   useEffect(() => {
     if (formikUser.values.complaintCategory === "OTHERS") {
       formikUser.setFieldValue("description", "");
+      formikUser.setFieldValue("priority", "LOW");
       return;
     }
 
@@ -509,6 +520,10 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
                       readOnly={isReadOnly}
                       style={isReadOnly && "!bg-gray-100"}
                     />
+                    <ErrorMsg
+                      error={formikUser.errors.customerName}
+                      touched={formikUser.touched.customerName}
+                    />
                   </div>
 
                   <div>
@@ -522,6 +537,10 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
                       readOnly={isReadOnly}
                       style={isReadOnly && "!bg-gray-100"}
                     />
+                    <ErrorMsg
+                      error={formikUser.errors.mobile}
+                      touched={formikUser.touched.mobile}
+                    />
                   </div>
 
                   <div>
@@ -533,6 +552,10 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
                       onBlur={formikUser.handleBlur}
                       readOnly={isReadOnly}
                       style={isReadOnly && "!bg-gray-100"}
+                    />
+                    <ErrorMsg
+                      error={formikUser.errors.email}
+                      touched={formikUser.touched.email}
                     />
                   </div>
 
@@ -767,14 +790,14 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
                   ) : (
                     <div className="text-center mt-5">
                       <p className="text-gray-600 text-sm font-medium">
-                        Upload Supported Documents
-                      </p>
-                      <p className="text-[12px] text-red-500">
-                        Only .PDF, .PNG, .JPG, .JPEG .CSV Files Allowed
-                      </p>
-                      <p className="text-[10px] text-red-500">
-                        Only 3 Files Allowed
-                      </p>
+                          Upload Supported Documents
+                        </p>
+                        <p className="text-[12px] text-red-500">
+                          Only .PDF, .PNG, .JPG, .JPEG .CSV Files Allowed
+                        </p>
+                        <p className="text-[10px] text-red-500">
+                          Only 5 Files Allowed - Per File max 10MB Allowed
+                        </p>
                     </div>
                   )}
                 </div>
@@ -800,6 +823,11 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
                   </div>
                 ))}
               </div>
+
+              <ErrorMsg
+                    error={formikUser.errors.files}
+                    touched={formikUser.touched.files}
+                  />
 
               {/* {formikUser.values.file && 
               <div className="w-full h-[150px]">

@@ -74,7 +74,7 @@ export default function MailBox() {
                     {selectedMail?.[0]?.subject || "No Subject"}
                   </h3>
                   <p className="text-xs text-gray-400 mt-1">
-                    Conversation with {selectedMail?.[0]?.to}
+                    Conversation with {selectedMail?.[0]?.from}
                   </p>
                 </div>
               </div>
@@ -121,6 +121,8 @@ export default function MailBox() {
                         <p className="text-sm leading-relaxed whitespace-pre-line">
                           {mail.body}
                         </p>
+
+                         {/* <div dangerouslySetInnerHTML={{ __html: mail?.body } || mail?.body}></div> */}
                       </div>
                     </div>
                   );

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import DashboardStats from "../utils/DashboardStats";
 import DashboardChart from "../utils/DashboardChart";
 import { getDashboardData } from "../api/ApiFunction";
+import PageLoader from "../utils/PageLoader/PageLoader";
 
 
 const complaints = [
@@ -12,9 +13,11 @@ const complaints = [
 
 export default function Dashboard() {
   const [dashData, setDashData] = useState([])
+  const [isLoading, setisLoading] = useState(false)
 
   const fetchDashboardData = async () => {
     try {
+      setisLoading(true)
       const response = await getDashboardData()
       if(response.status){
         setDashData(response.data)
@@ -22,12 +25,16 @@ export default function Dashboard() {
     } catch (error) {
       console.log("Error in fetchRemarksData: ", error);
       toast.error(error.response?.data?.message || "Something went wrong!");
+    }finally{
+      setisLoading(false)
     }
   }
 
   useEffect(()=> {
     fetchDashboardData()
   },[])
+
+  if(isLoading) return <PageLoader />
 
   return (
     <div className="min-h-screen p-0">

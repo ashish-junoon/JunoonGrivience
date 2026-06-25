@@ -46,7 +46,7 @@ const ReOpen = ({ setisReOpen, ticket, fetchData, isReOpen }) => {
         description: values.description,
         empId: adminUser?.empId || "USER",
         id: ticket?._id,
-        complaintRefNo: ticket?._complaintRefNo,
+        complaintRefNo: ticket?.complaintRefNo,
       };
 
       console.log(req);
