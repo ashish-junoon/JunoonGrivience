@@ -424,3 +424,13 @@ export const getThreadMail = async (threadId) => {
     throw error; // Rethrow error to handle it in the calling function
   }
 };
+
+export const replyEmail = async (req) => {
+  try {
+    const response = await api.post("/mail/replyEmail", {req});
+    return response.data; // Return the API response data
+  } catch (error) {
+    console.error("Create User error:", error.response?.data || error.message);
+    throw error; // Rethrow error to handle it in the calling function
+  }
+};

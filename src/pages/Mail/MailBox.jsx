@@ -1,18 +1,61 @@
 import { useEffect, useState } from "react";
-import { getInboxMail, getThreadMail } from "../../api/ApiFunction";
+import { getInboxMail, getThreadMail, replyEmail } from "../../api/ApiFunction";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 
 export default function MailBox() {
   const [active, setActive] = useState("inbox");
   const [selectedMail, setSelectedMail] = useState(null);
 
+  console.log(selectedMail?.at(-1)?.gmailId);
+
   const isMe = (from) => from.includes("rohitkolisd@gmail.com");
-  // apna email yaha daal
+
+  const isHtml = (str = "") => {
+    return /<\/?[a-z][\s\S]*>/i.test(str);
+  };
+
+  const decodeHtml = (text = "") => {
+    const txt = document.createElement("textarea");
+    txt.innerHTML = text;
+    return txt.value;
+  };
 
   const tabs = [
     { key: "inbox", label: "Inbox" },
     // { key: "sent", label: "Sent" },
     // { key: "draft", label: "Draft" },
   ];
+
+  const replySchema = Yup.object({
+    body: Yup.string().trim().required("Reply message is required"),
+  });
+
+  const formik = useFormik({
+    initialValues: {
+      body: "",
+    },
+    validationSchema: replySchema,
+    onSubmit: async (values, { resetForm }) => {
+      try {
+        const payload = {
+          emailId: selectedMail?.at(-1)?._id,
+          body: values.body,
+        };
+
+        console.log(payload);
+
+        const res = await replyEmail(payload);
+
+        if (res?.success) {
+          toast.success("Reply sent successfully");
+          resetForm();
+        }
+      } catch (error) {
+        toast.error(error?.response?.data?.message || "Failed to send reply");
+      }
+    },
+  });
 
   return (
     <div className="p-0">
@@ -118,11 +161,24 @@ export default function MailBox() {
                         </div>
 
                         {/* Message */}
-                        <p className="text-sm leading-relaxed whitespace-pre-line">
+                        {/* <p className="text-sm leading-relaxed whitespace-pre-line">
                           {mail.body}
-                        </p>
+                        </p> */}
 
-                         {/* <div dangerouslySetInnerHTML={{ __html: mail?.body } || mail?.body}></div> */}
+                        {/* <div dangerouslySetInnerHTML={{ __html: mail?.body } || mail?.body}></div> */}
+
+                        <div className="text-sm text-gray-700 min-w-[100%] overflow-x-scroll">
+                          {isHtml(mail?.body) ? (
+                            <div
+                              className="prose prose-sm max-w-none"
+                              dangerouslySetInnerHTML={{ __html: mail.body }}
+                            />
+                          ) : (
+                            <div className="whitespace-pre-wrap break-all overflow-x-auto">
+                              {decodeHtml(mail?.body)}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -130,7 +186,40 @@ export default function MailBox() {
               </div>
 
               {/* ================= REPLY ================= */}
-              <div className="border-t bg-white px-4 py-3">
+
+              <form onSubmit={formik.handleSubmit}>
+                <div>
+                  {/* <label className="block text-sm font-medium mb-1">
+                    Reply
+                  </label> */}
+
+                  <textarea
+                    name="body"
+                    rows={1}
+                    value={formik.values.body}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    placeholder="Type your reply..."
+                    className="w-full border rounded-md p-3"
+                  />
+
+                  {formik.touched.body && formik.errors.body && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {formik.errors.body}
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  className="mt-4 px-4 py-2 bg-primary text-white rounded-md"
+                  disabled={formik.isSubmitting}
+                >
+                  {formik.isSubmitting ? "Sending..." : "Send Reply"}
+                </button>
+              </form>
+
+              {/* <div className="border-t bg-white px-4 py-3">
                 <div className="flex items-end gap-3">
                   <textarea
                     placeholder="Write a reply..."
@@ -142,7 +231,7 @@ export default function MailBox() {
                     Send
                   </button>
                 </div>
-              </div>
+              </div> */}
             </div>
           )}
         </div>
