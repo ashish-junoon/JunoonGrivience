@@ -149,7 +149,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
       formData.append("complaintCategory", values.complaintCategory);
       formData.append("complaintDescription", values.description);
       formData.append("location", values.geolocation);
-      formData.append("priority", values.priority);
+      formData.append("priority", values.priority || "LOW");
       formData.append("createdBy", adminUser?.empId);
       // formData.append("file", values.file);
 
@@ -217,7 +217,6 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
   useEffect(() => {
     if (formikUser.values.complaintCategory === "OTHERS") {
       formikUser.setFieldValue("description", "");
-      formikUser.setFieldValue("priority", "LOW");
       return;
     }
 
@@ -226,7 +225,7 @@ const ComplaintForm = ({ user, fetchData, setIsOpen, setisAddDataLoading }) => {
     );
 
     formikUser.setFieldValue("description", selectedReason?.description || "");
-    formikUser.setFieldValue("priority", selectedReason?.priority || "");
+    formikUser.setFieldValue("priority", selectedReason?.priority || "LOW");
   }, [formikUser.values.complaintCategory]);
 
   const ErrorMsg = ({ error, touched }) => {

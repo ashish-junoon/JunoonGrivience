@@ -23,6 +23,7 @@ import Modal from "../../utils/Modal.jsx";
 import ReOpen from "./ReOpen.jsx";
 import { Helmet } from "react-helmet";
 import Typewriter from "../../utils/TypeWriterLoader.jsx/Typewriter.jsx";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 const ComplaintForm = ({ user }) => {
   // const [loanData, setLoanData] = useState([]);
@@ -32,6 +33,7 @@ const ComplaintForm = ({ user }) => {
   const [hasApplied, setHasApplied] = useState("NO");
   const [statusData, setstatusData] = useState(null);
   const [isLoading, setisLoading] = useState(false);
+  const [isLocationGetting, setisLocationGetting] = useState(false);
   const [isInvalidLoan, setisInvalidLoan] = useState(false);
   const [isReadOnly, setisReadOnly] = useState(true);
   const [RemarksData, setRemarksData] = useState([]);
@@ -49,10 +51,13 @@ const ComplaintForm = ({ user }) => {
   const [otpMobileTimer, setOtpMobileTimer] = useState(0);
   const [otpEmailTimer, setOtpEmailTimer] = useState(0);
 
+  const [searchParams] = useSearchParams()
+  const urlProductCode = searchParams.get("product")?.toUpperCase()
+
   //Sent OTP Mobile
   const handleSendMobileOtp = async () => {
-    if (!formikUser.values.productName)
-      return toast.info("Please select product!");
+    // if (!formikUser.values.productName)
+    //   return toast.info("Please select product!");
     try {
       setisLoading(true);
       const req = {
@@ -63,7 +68,7 @@ const ComplaintForm = ({ user }) => {
       const response = await sendMobileOtp(req);
       if (response.status) {
         toast.success(
-          response.message + " " + response.otp || "Otp sent successfully",
+          response.message|| "OTP sent successfully",
         );
         setSentMobileOtp(true);
         setOtpMobileTimer(30);
@@ -172,7 +177,7 @@ const ComplaintForm = ({ user }) => {
   const complaintSchema = Yup.object().shape({
     loanId: Yup.string().when("hasLoan", {
       is: "YES",
-      then: (schema) => schema.required("Loan ID is required"),
+      then: (schema) => schema.required("Loan ID is required").min(2).max(35),
       otherwise: (schema) => schema.notRequired(),
     }),
 
@@ -273,11 +278,11 @@ const ComplaintForm = ({ user }) => {
       formData.append("complaintCategory", values.complaintCategory);
       formData.append("complaintDescription", values.description);
       formData.append("location", values.geolocation);
-      formData.append("priority", values.priority);
+      formData.append("priority", values.priority || "LOW");
       formData.append("createdBy", values.createdBy);
       // formData.append("file", values.file);
 
-      // if (values.file && values.file.name) {
+      // if (values.file && values.file.name) {d
       //   formData.append("file", values.file);
       // }
 
@@ -333,9 +338,14 @@ const ComplaintForm = ({ user }) => {
 
   // ✅ SEARCH BY LOAN ID
   const handleSearch = async () => {
+    if(formikUser.values.loanId?.length <= 2){
+      return toast.info("Please enter valid loanId")
+    }
+
     const req = {
       loanId: formikUser.values.loanId,
     };
+
     setisLoading(true);
     try {
       const response = await getUserDetailsWithLoanId(req);
@@ -400,67 +410,67 @@ const ComplaintForm = ({ user }) => {
     return <p className="text-red-500 text-xs">{error}</p>;
   };
 
-  const handleGetLocation = () => {
-    formikUser.setFieldValue(
-      "geolocation",
-      "Sector 17, Dwarka, South West Delhi, Delhi, 110078, India",
-    );
+  // const handleGetLocation = () => {
+  //   formikUser.setFieldValue(
+  //     "geolocation",
+  //     "Sector 17, Dwarka, South West Delhi, Delhi, 110078, India",
+  //   );
+  // };
+
+  const GetLocation = () => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject("Geolocation nor suppoeted!");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            lat: position.coords.latitude,
+            long: position.coords.longitude,
+          });
+        },
+        (error) => {
+          reject(error);
+        },
+      );
+    });
   };
 
-  // const GetLocation = () => {
-  //   return new Promise((resolve, reject) => {
-  //     if (!navigator.geolocation) {
-  //       reject("Geolocation nor suppoeted!");
-  //       return;
-  //     }
+  const handleGetLocation = async () => {
+    const permision = await navigator.permissions.query({
+      name: "geolocation",
+    });
 
-  //     navigator.geolocation.getCurrentPosition(
-  //       (position) => {
-  //         resolve({
-  //           lat: position.coords.latitude,
-  //           long: position.coords.longitude,
-  //         });
-  //       },
-  //       (error) => {
-  //         reject(error);
-  //       },
-  //     );
-  //   });
-  // };
+    if (permision.state === "denied") {
+      toast.info("Loaction is blocked. Please enable it in browsers settings.");
+      return;
+    }
 
-  // const handleGetLocation = async () => {
-  //   const permision = await navigator.permissions.query({
-  //     name: "geolocation",
-  //   });
+    try {
+      setisLocationGetting(true);
+      const location = await GetLocation();
 
-  //   if (permision.state === "denied") {
-  //     toast.info("Loaction is blocked. Please enable it in browsers settings.");
-  //     return;
-  //   }
+      if (!location) {
+        toast.info("Location is required");
+        return;
+      }
 
-  //   try {
-  //     setisLoading(true);
-  //     const location = await GetLocation();
-
-  //     if (!location) {
-  //       toast.info("Location is required");
-  //       return;
-  //     }
-
-  //     const url = `https://nominatim.openstreetmap.org/reverse?lat=${location.lat}&lon=${location.long}&format=json`;
-  //     const response = await fetch(url);
-  //     const data = await response.json();
-  //     if (response.ok) {
-  //       formikUser.setFieldValue("geolocation", data.display_name);
-  //     } else {
-  //       return toast.error("Geo Coding failed!");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error in Location: ", error);
-  //   } finally {
-  //     setisLoading(false);
-  //   }
-  // };
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${location.lat}&lon=${location.long}&format=json`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (response.ok) {
+        formikUser.setFieldValue("geolocation", data.display_name);
+      } else {
+        return toast.error("Geo Coding failed!");
+      }
+    } catch (error) {
+      console.error("Error in Location: ", error);
+    } finally {
+      setisLocationGetting(false);
+    }
+  };
 
   const fetchRemarksData = async (req) => {
     try {
@@ -492,6 +502,12 @@ const ComplaintForm = ({ user }) => {
     }));
   };
 
+  useEffect(()=> {
+    if(urlProductCode){
+      formikUser.setFieldValue("productName" ,urlProductCode)
+    }
+  },[])
+
   // console.log(formikUser.errors);
   // console.log(formikUser.values);
   // console.log(handleGetLocation());
@@ -505,13 +521,13 @@ const ComplaintForm = ({ user }) => {
 
       {formikUser.isSubmitting && <Typewriter text="Submiting..." />}
 
-      <section className="min-h-screen">
+      <section className="min-h-full">
         {/* <Background /> */}
         <div className="">
           {/* QUESTIONS */}
-          <div className="bg-white shadow rounded-lg p-6 mb-2">
+          <div className="bg-white shadow rounded-lg p-4 mb-2">
             {user && (
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-2">
                 <p className="text-gray-600">
                   Have you already raised this grievance earlier?
                 </p>
@@ -567,15 +583,16 @@ const ComplaintForm = ({ user }) => {
             <form onSubmit={formikUser.handleSubmit}>
               {/* ✅ IF USER HAS LOAN */}
               {hasLoan === "YES" && (
-                <div className="bg-white p-6 rounded-lg shadow mb-2">
+                <div className="bg-white p-4 rounded-lg shadow mb-2">
                   <div className="mb-2">
-                    <div className="flex gap-3 items-start mb-4">
+                    <div className="flex gap-1 items-start mb-4">
                       {/* Input + Error */}
                       <div className="w-full">
                         <TextInput
                           label="Loan Account No."
                           name="loanId"
                           value={formikUser.values.loanId}
+                          maxLength={35}
                           // onChange={formikUser.handleChange}
                           onChange={(e) =>
                             formikUser.setFieldValue(
@@ -611,7 +628,7 @@ const ComplaintForm = ({ user }) => {
                             btnName="Verify"
                             disabled={isLoading}
                             onClick={handleSearch}
-                            style={`${isLoading ? "bg-gray-500" : "bg-primary hover:bg-primary/90"} text-white px-4 py-2 cursor-pointer`}
+                            style={`${isLoading ? "bg-gray-500" : "bg-theme hover:bg-theme/90"} text-white px-4 py-2 cursor-pointer`}
                           />
                         </div>
                       )}
@@ -643,7 +660,7 @@ const ComplaintForm = ({ user }) => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 lg:gap-4 gap-1">
                     <div>
                       <TextInput
                         label="Customer Name"
@@ -706,7 +723,7 @@ const ComplaintForm = ({ user }) => {
 
                       {/* OTP Button Logic */}
                       {!isMobileVerified &&
-                        formikUser.values.mobile.length === 10 && (
+                        formikUser.values.mobile?.trim().length === 10 && (
                           <Button
                             type="button"
                             btnName={
@@ -813,7 +830,7 @@ const ComplaintForm = ({ user }) => {
 
               {/* ❌ NO LOAN → MANUAL FORM */}
               {hasLoan === "NO" && (
-                <div className="bg-white p-6 rounded-lg shadow mb-2 grid grid-cols-2 gap-4">
+                <div className="bg-white p-4 rounded-lg shadow mb-2 grid grid-cols-2 lg:gap-4 gap-1">
                   <div>
                     <TextInput
                       label="Customer Name"
@@ -859,7 +876,7 @@ const ComplaintForm = ({ user }) => {
 
                     {/* OTP Button Logic */}
                     {!isMobileVerified &&
-                      formikUser.values.mobile.length === 10 && (
+                      formikUser.values.mobile?.trim().length === 10 && (
                         <Button
                           type="button"
                           btnName={
@@ -963,8 +980,8 @@ const ComplaintForm = ({ user }) => {
               )}
 
               {/* COMMON SECTION */}
-              <div className="bg-white p-6 rounded-lg shadow">
-                <div className="flex gap-3 items-end mb-4">
+              <div className="bg-white p-4 rounded-lg shadow">
+                <div className="flex gap-1 items-end mb-4">
                   <div className="w-full">
                     <TextInput
                       label="Current Live Location"
@@ -982,10 +999,10 @@ const ComplaintForm = ({ user }) => {
                   <div>
                     <Button
                       type="button"
-                      disabled={isLoading || formikUser.values.geolocation}
-                      btnName={!isLoading ? "Get Location" : "Getting..."}
+                      disabled={isLocationGetting || formikUser.values.geolocation}
+                      btnName={!isLocationGetting ? "Get Location" : "Getting..."}
                       onClick={handleGetLocation}
-                      style={`${formikUser.values.geolocation || isLoading ? "bg-gray-500" : "bg-primary hover:bg-primary/90"} text-white px-4 py-2 cursor-pointer text-nowrap`}
+                      style={`${formikUser.values.geolocation || isLocationGetting ? "bg-gray-500" : "bg-theme hover:bg-theme/90"} text-white px-4 py-2 cursor-pointer text-nowrap`}
                     />
                   </div>
                 </div>
@@ -1008,7 +1025,7 @@ const ComplaintForm = ({ user }) => {
 
                 <div>
                   <textarea
-                    className="w-full mt-4 border border-gray-300 p-3 rounded-md text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    className="w-full mt-2 border border-gray-300 p-3 rounded-md text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-400"
                     placeholder="Write Your Grievance Here..."
                     value={formikUser.values.description}
                     // readOnly={formikUser.values.complaintCategory !== "OTHERS"}
@@ -1025,7 +1042,7 @@ const ComplaintForm = ({ user }) => {
                   />
                 </div>
 
-                {/* <div className="bg-primary/10 py-10 relative flex justify-center rounded-md">
+                {/* <div className="bg-theme/10 py-10 relative flex justify-center rounded-md">
                   <input
                     name="files"
                     onChange={(e) => {
@@ -1053,7 +1070,7 @@ const ComplaintForm = ({ user }) => {
                   </div>
                 </div> */}
 
-                <div className="bg-primary/10 py-10 relative flex justify-center rounded-md">
+                <div className="bg-theme/5 border border-theme/20 py-8 relative flex justify-center rounded-md">
                   <input
                     name="files"
                     type="file"
@@ -1081,14 +1098,14 @@ const ComplaintForm = ({ user }) => {
                   />
 
                   <div className="flex flex-col items-center">
-                    <Icon name="FaFileUpload" color="#088395" size={25} />
+                    <Icon name="FaFileUpload" color="#000000" size={20} />
 
                     {formikUser?.values?.files?.length > 0 ? (
-                      <p className="text-gray-600 text-sm font-medium mt-5">
+                      <p className="text-gray-600 text-sm font-medium mt-3">
                         {formikUser.values.files.length} File(s) Selected
                       </p>
                     ) : (
-                      <div className="text-center mt-5">
+                      <div className="text-center mt-3">
                         <p className="text-gray-600 text-sm font-medium">
                           Upload Supported Documents
                         </p>
@@ -1108,7 +1125,7 @@ const ComplaintForm = ({ user }) => {
                   />
                 </div>
 
-                <div className="mt-2">
+                <div className="mt-0">
                   {formikUser?.values?.files?.map((file, index) => (
                     <div
                       key={index}
@@ -1154,7 +1171,7 @@ const ComplaintForm = ({ user }) => {
                         !isEmailVerified ||
                         formikUser.isSubmitting
                           ? "bg-gray-400"
-                          : "bg-primary hover:bg-primary/80"
+                          : "bg-theme hover:bg-theme/80"
                       } text-white px-6 py-2 rounded-md cursor-pointer`}
                     />
                   </div>
@@ -1283,7 +1300,7 @@ const ComplaintForm = ({ user }) => {
                           <a
                             href={`${import.meta.env.VITE_SERVER_BASE_URL}${doc.url}`}
                             target="_blank"
-                            className="text-primary hover:underline"
+                            className="text-theme hover:underline"
                           >
                             View
                           </a>
@@ -1313,7 +1330,7 @@ const ComplaintForm = ({ user }) => {
                         btnIcon="FaFolderOpen"
                         onClick={() => setIsReopen(true)}
                         btnName="ReOpen"
-                        style="bg-primary hover:bg-primary/80 text-white px-5 py-2 rounded-md cursor-pointer"
+                        style="bg-theme hover:bg-theme/80 text-white px-5 py-2 rounded-md cursor-pointer"
                       />
                     )}
 
@@ -1321,7 +1338,7 @@ const ComplaintForm = ({ user }) => {
                       btnIcon="FaPrint"
                       onClick={() => window.print()}
                       btnName="Print"
-                      style="bg-primary hover:bg-primary/80 text-white px-5 py-2 rounded-md cursor-pointer"
+                      style="bg-theme hover:bg-theme/80 text-white px-5 py-2 rounded-md cursor-pointer"
                     />
                   </div>
                 </div>
@@ -1343,7 +1360,7 @@ const ComplaintForm = ({ user }) => {
                         <Button
                           type="submit"
                           btnName="Check status"
-                          style="bg-primary text-white px-6 py-2 rounded-md text-nowrap cursor-pointer"
+                          style="bg-theme text-white px-6 py-2 rounded-md text-nowrap cursor-pointer"
                         />
                       </div>
                     </div>

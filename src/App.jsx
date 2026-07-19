@@ -15,7 +15,7 @@ import ProtectedRoutes from "./routes/ProtectedRoutes";
 import RemarksMaster from "./pages/admin/RemarksMaster";
 import AdminProtectedRoutes from "./routes/AdminProtectedRoutes";
 import Profile from "./pages/Profile";
-import MailBox from "./pages/Mail/MailBox";
+// import MailBox from "./pages/Mail/MailBox";
 
 function App() {
   const { adminUser, isAuthenticated } = useAuth();
@@ -40,7 +40,7 @@ function App() {
           <Route element={<AdminProtectedRoutes />}>
           <Route path="/user/manage-user" element={<UserMaster />} />
           <Route path="/query/manage-query" element={<RemarksMaster />} />
-          <Route path="/mail-management" element={<MailBox />} />
+          {/* <Route path="/mail-management" element={<MailBox />} /> */}
           </Route>
         </Route>
       </Route>
